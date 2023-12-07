@@ -1,1 +1,16 @@
 # GazeDetectorDataClient
+#### Short description
+This client will be used for data collection for netural network training - a CNN for gaze detection.
+
+#### Architecture
+We will use electron.js to build the desktop app, and next.js for the front end code.
+
+#### Design
+##### The client will have one main hub screen:
+![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
+
+##### The glasses hub button will open a glasses hub screen:
+![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/fabc0a0e-e7f6-46cc-bb1f-4b217e4982e0)
+
+##### The kinect hub button will open a kinect hub screen:
+![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/7a01b8c2-cb95-49e6-aefd-4e608a25fdba)
