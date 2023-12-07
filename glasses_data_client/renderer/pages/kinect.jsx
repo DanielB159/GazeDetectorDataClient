@@ -18,26 +18,12 @@ export default function HomePage() {
         <title>Home - Nextron (basic-lang-javascript)</title>
       </Head>
       <div>
-        <p>
-          ⚡ Electron + Next.js ⚡ -
-          <Link href="/next">
-            <a>Go to next page</a>
-          </Link>
-        </p>
-        <Image
-          src="/images/logo.png"
-          alt="Logo image"
-          width="256px"
-          height="256px"
-        />
-      </div>
-      <div>
         <button
           onClick={() => {
-            window.ipc.send('show-kinect')
+            window.ipc.send('message', 'Hello')
           }}
         >
-          Kinect Page
+          Test IPC
         </button>
         <p>{message}</p>
       </div>

@@ -22,11 +22,26 @@ if (isProd) {
     },
   })
 
+  const kinectWindow = createWindow('kinect', {
+    width: 800,
+    height: 600,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  ipcMain.on('show-kinect', () => {
+    kinectWindow.show()
+  })
+
   if (isProd) {
     await mainWindow.loadURL('app://./home')
+    await kinectWindow.loadURL('app://./kinect')
   } else {
     const port = process.argv[2]
     await mainWindow.loadURL(`http://localhost:${port}/home`)
+    await kinectWindow.loadURL(`http://localhost:${port}/kinect`)
     mainWindow.webContents.openDevTools()
   }
 })()
