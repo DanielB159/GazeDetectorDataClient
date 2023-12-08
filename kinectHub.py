@@ -1,6 +1,7 @@
 from imports import tk
 
 class KinectHub:
+    """Class representing the Kinect Hub"""
     _instance = None
     _is_initialized = False
 
