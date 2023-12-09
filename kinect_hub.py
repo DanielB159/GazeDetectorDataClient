@@ -1,7 +1,10 @@
+"""Module with kinect hub class and methods"""
 from imports import tk
+
 
 class KinectHub:
     """Class representing the Kinect Hub"""
+
     _instance = None
     _is_initialized = False
 
@@ -9,10 +12,9 @@ class KinectHub:
         if cls._instance is None:
             cls._instance = super(KinectHub, cls).__new__(cls)
         return cls._instance
-        
-    def __init__(self, root: tk.Tk, identifier: int):
+
+    def __init__(self, root: tk.Tk):
         if not self._is_initialized:
-            self.identifier = identifier
             self._is_initialized = True
             self.root = root
             self.top_level = tk.Toplevel(root)
