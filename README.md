@@ -5,6 +5,12 @@ This client will be used for data collection for netural network training - a CN
 #### Architecture
 We will use electron.js to build the desktop app, and next.js for the front end code.
 
+#### Libraries
+The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
+```
+pip install -r .devcontainer/requirements.txt
+```
+
 #### Design
 ##### The client will have one main hub screen:
 ![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)

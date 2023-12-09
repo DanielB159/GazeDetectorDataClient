@@ -1,4 +1,5 @@
 """Module with kinect hub class and methods"""
+from pykinect_azure.k4a import _k4a
 from imports import tk
 
 
