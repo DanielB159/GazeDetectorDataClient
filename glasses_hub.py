@@ -1,7 +1,10 @@
+"""Module with glasses hub class and methods"""
 from imports import tk
+
 
 class GlassesHub:
     """Class representing the Kinect Hub"""
+
     _instance = None
     _is_initialized = False
 
@@ -9,7 +12,7 @@ class GlassesHub:
         if cls._instance is None:
             cls._instance = super(GlassesHub, cls).__new__(cls)
         return cls._instance
-    
+
     def __init__(self, root: tk.Tk):
         if not self._is_initialized:
             self._is_initialized = True
