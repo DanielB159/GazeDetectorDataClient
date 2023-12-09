@@ -3,7 +3,7 @@
 This client will be used for data collection for netural network training - a CNN for gaze detection.
 
 #### Architecture
-We will use electron.js to build the desktop app, and next.js for the front end code.
+We will use python's Tkinter to build the desktop app, and relevant SDK's for handeling the communication with the camera and the glasses.
 
 #### Libraries
 The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
