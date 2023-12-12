@@ -1,5 +1,7 @@
 pylint
 black
+PyQt5
+qasync
 pykinect_azure
 numpy
 opencv-python
