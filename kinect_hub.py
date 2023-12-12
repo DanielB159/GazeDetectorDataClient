@@ -4,6 +4,7 @@ import pykinect_azure as pykinect
 # import numpy as np
 import cv2
 import threading
+import time
 from pykinect_azure.k4arecord import Record, RecordConfiguration, Playback
 from pykinect_azure.k4a import Device, Capture, Image
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
@@ -29,6 +30,10 @@ class KinectHub:
             self.device : Device = None
             self.current_image : Image = None
             self.main_hub_widget : QWidget = main_hub_widget
+            # define the device configuration
+            self.device_config = pykinect.default_configuration
+            self.device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
+            # define the device UI
             self.define_ui()
             self.main_hub_widget.show()
 
@@ -55,32 +60,38 @@ class KinectHub:
         self._is_initialized = False
         del self
     
-    def capture_image(self):
-        """Function to capture an image from the kinect camera"""
-        self.configure_kinect()
-        if self.device is None:
-            return
+    # def capture_image(self):
+    #     """Function to capture an image from the kinect camera"""
+    #     self.configure_kinect()
+    #     if self.device is None:
+    #         return
     
-    def capture_image_thread(self):
-        """Function to capture an image from the kinect camera"""
-        # Get a capture from the device
-        capture: Capture = self.device.update()
-        ret: bool
-        raw_color_image: Image
-        # Get the color image from the capture
-        ret, raw_color_image = capture.get_color_image()
+    # def capture_image_thread(self):
+    #     """Function to capture an image from the kinect camera"""
+    #     # Get a capture from the device
+    #     capture: Capture = self.device.update()
+    #     ret: bool
+    #     raw_color_image: Image
+    #     # Get the color image from the capture
+    #     ret, raw_color_image = capture.get_color_image()
 
-        # if the capture did not succeed, then continue
+    #     # if the capture did not succeed, then continue
 
     def start_recording(self):
         """Function to start recording the kinect camera"""
         self.configure_kinect()
         if self.device is None:
             return
-        threading.Thread(terget=self.start_recording_thread).start()
+        threading.Thread(target=self.start_recording_thread).start()
     
     def start_recording_thread(self):
-        Record.create_recording
+        """Function to start recording the kinect camera"""
+        recording: Record = Record(self.device.handle(), self.device_config.handle(), "test.mkv") 
+        # Record.create_recording(self.device, self.device_config, "test.mkv")
+        # sleep for 5 secnods
+        time.sleep(5)
+        # Stop the recording
+        recording.close()
     
 
 
@@ -124,12 +135,8 @@ class KinectHub:
     def configure_camera_sdk_device(self) -> Device:
         """Function to configure the camera"""
         pykinect.initialize_libraries()
-        # Modify camera configuration
-        device_config = pykinect.default_configuration
-        device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
-        # device_config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
         try:
-            self.device: Device = pykinect.start_device(config=device_config)
+            self.device: Device = pykinect.start_device(config=self.device_config)
         except SystemExit as exception:
             print(exception)
             return None
