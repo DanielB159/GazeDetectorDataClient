@@ -1,3 +1,6 @@
 pylint
 black
-pykinect-azure
+pykinect_azure
+numpy
+opencv-python
+pillow
