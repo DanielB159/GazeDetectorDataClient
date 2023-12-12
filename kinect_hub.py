@@ -6,6 +6,7 @@ import cv2
 from pykinect_azure.k4a import Device, Capture, Image
 from PIL import ImageTk, Image as PILImage
 from imports import tk
+import threading
 
 
 class KinectHub:
@@ -44,8 +45,15 @@ class KinectHub:
         self._is_initialized = False
 
     def live_view(self):
-        """Function to open the live view in the kinect camera"""
+        """Function to open the live view in the kinect camera in a seperate thread"""
         device: Device = self.configure_camera()
+        if device is None:
+            return
+        # Start the live view in a seperate thread
+        threading.Thread(target=self.live_view_thread, args=(device,)).start()
+
+    def live_view_thread(self, device: Device):
+        '''Function to start the live view'''
         cv2.namedWindow("Live View", cv2.WINDOW_NORMAL)
         while True:
             # Get a capture from the device
@@ -66,6 +74,9 @@ class KinectHub:
             if cv2.waitKey(1) == ord('q'):
                 break
 
+    
+
+
     def configure_camera(self) -> Device:
         """Function to configure the camera"""
         pykinect.initialize_libraries()
@@ -73,6 +84,11 @@ class KinectHub:
         device_config = pykinect.default_configuration
         device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
         # device_config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
-
-        return pykinect.start_device(config=device_config)
+        try:
+            device: Device = pykinect.start_device(config=device_config)
+            return device
+        except SystemExit as exception:
+            print(exception)
+            return None
+            
 
