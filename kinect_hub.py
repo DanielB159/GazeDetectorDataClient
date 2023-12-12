@@ -3,6 +3,7 @@
 import pykinect_azure as pykinect
 # import numpy as np
 import cv2
+from pykinect_azure.k4arecord import Record, RecordConfiguration, Playback
 from pykinect_azure.k4a import Device, Capture, Image
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
 from imports import tk
@@ -36,9 +37,13 @@ class KinectHub:
     def define_ui(self):
         """Function defining the UI of the Kinect Hub"""
         title = tk.Label(self.top_level, text="Kinect Hub", fg="red", font=("Helvetica", 16))
-        title.grid(row=0, column=10, columnspan=2, sticky="ew")
+        title.grid(row=0, column=10, columnspan=2)
         live_view_btn = tk.Button(self.top_level, text="Live View", command=self.live_view)
-        live_view_btn.grid(row=2, column=2, columnspan=1, sticky="ew")
+        live_view_btn.grid(row=2, column=2, columnspan=1)
+        start_rec_btn = tk.Button(self.top_level, text="Start recording", command=self.start_recording)
+        start_rec_btn.grid(row=2, column=3, columnspan=1)
+        # start_rec_btn = tk.Button(self.top_level, text="Start recording", command=self.start_recording)
+        
 
 
     def __del__(self):
@@ -64,6 +69,18 @@ class KinectHub:
 
         # if the capture did not succeed, then continue
 
+    def start_recording(self):
+        """Function to start recording the kinect camera"""
+        self.configure_kinect()
+        if self.device is None:
+            return
+        threading.Thread(terget=self.start_recording_thread).start()
+    
+    def start_recording_thread(self):
+        Record.create_recording
+    
+
+
 
 
     def live_view(self):
@@ -87,7 +104,7 @@ class KinectHub:
             # self.current_image.handle()
             print(k4a_image_get_system_timestamp_nsec(self.current_image._handle))
             print(k4a_image_get_device_timestamp_usec(self.current_image._handle))
-            print()
+            print(k4a_image_get_timestamp_usec(self.current_image._handle))
             ret, raw_color_image = self.current_image.to_numpy()
             # ret, raw_color_image = capture.get_color_image()
 
