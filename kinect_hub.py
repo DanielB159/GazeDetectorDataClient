@@ -3,11 +3,13 @@
 import pykinect_azure as pykinect
 # import numpy as np
 import cv2
+import threading
 from pykinect_azure.k4arecord import Record, RecordConfiguration, Playback
 from pykinect_azure.k4a import Device, Capture, Image
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
-from imports import tk
-import threading
+from PyQt5.QtWidgets import QPushButton, QWidget, QLabel
+from qasync import QEventLoop
+
 
 
 class KinectHub:
@@ -21,47 +23,48 @@ class KinectHub:
             cls._instance = super(KinectHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, root: tk.Tk):
+    def __init__(self, main_hub_widget: QWidget):
         if not self._is_initialized:
             self._is_initialized : bool = True
             self.device : Device = None
             self.current_image : Image = None
-            self.root : tk.Tk = root
-            self.top_level : tk.Toplevel = tk.Toplevel(self.root)
-            self.top_level.resizable(False, False)
-            self.top_level.title("Kinect Hub")
-            self.top_level.geometry("500x500")
-            self.top_level.protocol("WM_DELETE_WINDOW", self.__del__)
+            self.main_hub_widget : QWidget = main_hub_widget
             self.define_ui()
+            self.main_hub_widget.show()
 
     def define_ui(self):
         """Function defining the UI of the Kinect Hub"""
-        title = tk.Label(self.top_level, text="Kinect Hub", fg="red", font=("Helvetica", 16))
-        title.grid(row=0, column=10, columnspan=2)
-        live_view_btn = tk.Button(self.top_level, text="Live View", command=self.live_view)
-        live_view_btn.grid(row=2, column=2, columnspan=1)
-        start_rec_btn = tk.Button(self.top_level, text="Start recording", command=self.start_recording)
-        start_rec_btn.grid(row=2, column=3, columnspan=1)
-        # start_rec_btn = tk.Button(self.top_level, text="Start recording", command=self.start_recording)
-        
+        self.main_hub_widget.setWindowTitle("Kinect Hub")
+        self.main_hub_widget.setGeometry(500, 500, 500, 500)
+        self.main_hub_widget.closeEvent = self.closeEvent
+        kinect_hub_title = QLabel(self.main_hub_widget)
+        kinect_hub_title.setText("Kinect Hub")
+        kinect_hub_title.move(200, 0)
+        live_view_btn : QPushButton = QPushButton(self.main_hub_widget)
+        live_view_btn.setText("Live View")
+        live_view_btn.move(200, 100)
+        live_view_btn.clicked.connect(self.live_view)
+        start_rec_btn : QPushButton = QPushButton(self.main_hub_widget)
+        start_rec_btn.setText("Start recording")
+        start_rec_btn.move(200, 150)
+        start_rec_btn.clicked.connect(self.start_recording)
 
-
-    def __del__(self):
-        self.top_level.destroy()
+    def closeEvent(self, event):
+        """Function to handle the close event"""
         self._instance = None
         self._is_initialized = False
-
-
+        del self
+    
     def capture_image(self):
         """Function to capture an image from the kinect camera"""
         self.configure_kinect()
         if self.device is None:
             return
     
-    def capture_image_thread(self, device: Device, current_image: Image):
+    def capture_image_thread(self):
         """Function to capture an image from the kinect camera"""
         # Get a capture from the device
-        capture: Capture = device.update()
+        capture: Capture = self.device.update()
         ret: bool
         raw_color_image: Image
         # Get the color image from the capture
