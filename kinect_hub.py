@@ -26,12 +26,14 @@ class KinectHub:
 
     def __init__(self, main_hub_widget: QWidget):
         if not self._is_initialized:
+            self.FILEPATH = "recordings/recording.mkv"
             self._is_initialized : bool = True
             self.device : Device = None
             self.current_image : Image = None
             self.main_hub_widget : QWidget = main_hub_widget
             # define the device configuration
             self.device_config = pykinect.default_configuration
+            self.device_config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_BGRA32
             self.device_config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_1080P
             # define the device UI
             self.define_ui()
@@ -44,6 +46,7 @@ class KinectHub:
         self.main_hub_widget.closeEvent = self.closeEvent
         kinect_hub_title = QLabel(self.main_hub_widget)
         kinect_hub_title.setText("Kinect Hub")
+        # enlarge the label
         kinect_hub_title.move(200, 0)
         live_view_btn : QPushButton = QPushButton(self.main_hub_widget)
         live_view_btn.setText("Live View")
@@ -79,70 +82,114 @@ class KinectHub:
 
     def start_recording(self):
         """Function to start recording the kinect camera"""
-        self.configure_kinect()
+        self.start_kinect_record()
         if self.device is None:
             return
-        threading.Thread(target=self.start_recording_thread).start()
-    
+        live_view_thread : threading.Thread = threading.Thread(target=self.start_recording_thread)
+        live_view_thread.start()
+        live_view_thread.join()
+        self.stop_kinect()
+
+
     def start_recording_thread(self):
         """Function to start recording the kinect camera"""
-        recording: Record = Record(self.device.handle(), self.device_config.handle(), "test.mkv") 
-        # Record.create_recording(self.device, self.device_config, "test.mkv")
-        # sleep for 5 secnods
-        time.sleep(5)
-        # Stop the recording
-        recording.close()
-    
-
-
-
-
-    def live_view(self):
-        """Function to open the live view in the kinect camera in a seperate thread"""
-        self.configure_kinect()
-        if self.device is None:
-            return
-        # Start the live view in a seperate thread
-        threading.Thread(target=self.live_view_thread).start()
-
-    def live_view_thread(self):
-        """Function to start the live view"""
-        cv2.namedWindow("Live View", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Recording", cv2.WINDOW_NORMAL)
         while True:
-            # Get a capture from the device
             capture: Capture = self.device.update()
             ret: bool
             raw_color_image: Image
             # Get the color image from the capture
-            self.current_image = capture.get_color_image_object()
-            # self.current_image.handle()
-            print(k4a_image_get_system_timestamp_nsec(self.current_image._handle))
-            print(k4a_image_get_device_timestamp_usec(self.current_image._handle))
-            print(k4a_image_get_timestamp_usec(self.current_image._handle))
-            ret, raw_color_image = self.current_image.to_numpy()
+            # self.current_image = capture.get_color_image_object()
+            ret, raw_color_image = capture.get_color_image()
             # ret, raw_color_image = capture.get_color_image()
 
             # if the capture did not succeed, then continue
             if not ret:
                 continue
-            image = cv2.putText(raw_color_image, "Live View", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-            cv2.imshow("Live View", image)
+            image = cv2.putText(raw_color_image, "Recording", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+            cv2.imshow("Recording", image)
 
             # Press q to exit
             if cv2.waitKey(1) == ord('q'):
                 break
+    
+
+
+
+
+    def live_view(self, record: bool = False):
+        """Function to open the live view in the kinect camera in a seperate thread"""
+        self.start_kinect()
+        if self.device is None:
+            return
+        # Start the live view in a seperate thread
+        live_view_thread: threading.Thread = threading.Thread(target=self.live_view_thread, args=(self.device,))
+        live_view_thread.start()
+        # Wait for the thread to finish
+        live_view_thread.join()
+        # Stop the kinect
+        self.stop_kinect()
+        
+
+    def live_view_thread(self, device: Device):
+        """Function to start the live view"""
+        cv2.namedWindow("Live View", cv2.WINDOW_NORMAL)
+        while True:
+            # Get a capture from the device
+            capture: Capture = device.update()
+            ret: bool
+            raw_color_image: Image
+            # Get the color image from the capture
+            # self.current_image = capture.get_color_image_object()
+            # self.current_image.handle()
+            # print(k4a_image_get_system_timestamp_nsec(self.current_image._handle))
+            # print(k4a_image_get_device_timestamp_usec(self.current_image._handle))
+            # print(k4a_image_get_timestamp_usec(self.current_image._handle))
+            ret, raw_color_image = capture.get_color_image()
+
+            # if the capture did not succeed, then continue
+            if not ret:
+                continue
+            image = cv2.putText(raw_color_image, "Live View", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            cv2.imshow("Live View", image)
+
+            # Press q to exit
+            if cv2.waitKey(1) == ord('q'):
+                cv2.destroyWindow("Live View")
+                break
    
-    def configure_camera_sdk_device(self) -> Device:
+    def configure_camera(self):
         """Function to configure the camera"""
         pykinect.initialize_libraries()
         try:
-            self.device: Device = pykinect.start_device(config=self.device_config)
+            self.device = pykinect.start_device(config=self.device_config)
+        except SystemExit as exception:
+            print(exception)
+            return None
+    
+    def configure_camera_rec(self):
+        """Function to configure the camera"""
+        pykinect.initialize_libraries()
+        try:
+            self.device = pykinect.start_device(config=self.device_config, record=True, record_filepath=self.FILEPATH)
         except SystemExit as exception:
             print(exception)
             return None
         
-    def configure_kinect(self):
+    def start_kinect(self):
         """Function to configure the device"""
         if self.device is None:
-            self.configure_camera_sdk_device()
+            self.configure_camera()
+
+    def start_kinect_record(self):
+        """Function to configure the device"""
+        if self.device is None:
+            self.configure_camera_rec()
+    
+    def stop_kinect(self):
+        """Function to stop the kinect"""
+        if self.device is not None:
+            self.device.close()
+            self.device = None
+    
             
