@@ -4,6 +4,7 @@ from qasync import QEventLoop
 from imports import asyncio
 from imports import g3pylib
 from imports import os
+from imports import cv2
 
 class GlassesHub:
     """Class representing the Kinect Hub"""
@@ -35,25 +36,55 @@ class GlassesHub:
     async def connect(self):
         """Function to connect machine to glasses"""
         self.g3 = await g3pylib.connect_to_glasses.with_hostname(os.environ["G3_HOSTNAME"])
-        self.connection_label.setText(f"Connected to {self.g3.rtsp_url}")
+        self.connection_label.setText(f"Status: Connected to {self.g3.rtsp_url}")
     
     async def disconnect(self):
-        self.g3.close()
-        self.connection_label.setText("Not Connected")
+        await self.g3.close()
+        self.connection_label.setText("Status: Not Connected")
+    
+    async def calibrate(self):
+        out = await self.g3.calibrate.run()
+        if (out):
+            print("Calibration successful.")
+        else:
+            print("Calibration failed.")
+
+    async def lv_start(self):
+        async with self.g3.stream_rtsp(scene_camera=True) as streams:
+            async with streams.scene_camera.decode() as decoded_stream:        
+                cv2.namedWindow("Live View", cv2.WINDOW_NORMAL)
+                for _ in range(300):
+                    frame, _timestamp = await decoded_stream.get()
+                    image = frame.to_ndarray(format="bgr24")
+                    cv2.imshow("Live View", image)  # type: ignore
+                    cv2.waitKey(1)  # type: ignore
     
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
         self.connection_label : QLabel = QLabel(self.glasses_widget)
-        self.connection_label.setText("Not Connected")
-        self.connection_label.move(200, 0)
+        self.connection_label.resize(1000, 20)
+        self.connection_label.setText("Status: Not Connected")
 
         self.connect_button : QPushButton = QPushButton(self.glasses_widget)
         self.connect_button.setText("Connect")
-        self.connect_button.move(200, 100)
+        self.connect_button.move(0, 50)
         self.connect_button.clicked.connect(lambda: asyncio.ensure_future(self.connect()))
+        
+        self.disconnect_button : QPushButton = QPushButton(self.glasses_widget)
+        self.disconnect_button.setText("Disconnect")
+        self.disconnect_button.move(100, 50)
+        self.disconnect_button.clicked.connect(lambda: asyncio.ensure_future(self.disconnect()))
+
+        self.calibrate_button : QPushButton = QPushButton(self.glasses_widget)
+        self.calibrate_button.setText("Calibrate")
+        self.calibrate_button.move(0, 150)
+        self.calibrate_button.clicked.connect(lambda: asyncio.ensure_future(self.calibrate()))
+
+        self.lv_start_button : QPushButton = QPushButton(self.glasses_widget)
+        self.lv_start_button.setText("Start Live View")
+        self.lv_start_button.move(0, 250)
+        self.lv_start_button.clicked.connect(lambda: asyncio.ensure_future(self.lv_start()))
 
         
-        self.connect_button : QPushButton = QPushButton(self.glasses_widget)
-        self.connect_button.setText("Disconnect")
-        self.connect_button.move(200, 200)
-        self.connect_button.clicked.connect(lambda: asyncio.ensure_future(self.disconnect()))
+
+
