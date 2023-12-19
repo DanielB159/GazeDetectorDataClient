@@ -6,6 +6,17 @@ from imports import g3pylib
 from imports import os
 from imports import cv2
 
+import threading
+
+def run_async_thread(func):
+    rtsp_thread : threading.Thread = threading.Thread(target=lambda x: thread_function(x), args=(func,))
+    rtsp_thread.start()
+
+def thread_function(func):
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(func())
+    loop.close()
+
 class GlassesHub:
     """Class representing the Kinect Hub"""
 
@@ -50,15 +61,17 @@ class GlassesHub:
             print("Calibration failed.")
 
     async def lv_start(self):
-        async with self.g3.stream_rtsp(scene_camera=True) as streams:
-            async with streams.scene_camera.decode() as decoded_stream:        
-                cv2.namedWindow("Live View", cv2.WINDOW_NORMAL)
-                for _ in range(300):
-                    frame, _timestamp = await decoded_stream.get()
+        async with self.g3.stream_rtsp(scene_camera=True) as self.streams:
+            async with self.streams.scene_camera.decode() as self.decoded_stream:        
+                cv2.namedWindow("Live_View", cv2.WINDOW_NORMAL)
+                prev_key = -1
+                while (prev_key != ord('q')):
+                    frame, _timestamp = await self.decoded_stream.get()
                     image = frame.to_ndarray(format="bgr24")
-                    cv2.imshow("Live View", image)  # type: ignore
-                    cv2.waitKey(1)  # type: ignore
-    
+                    cv2.imshow("Live_View", image)  # type: ignore
+                    prev_key = cv2.waitKey(1)  # type: ignore
+                cv2.destroyWindow("Live_View")
+
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
         self.connection_label : QLabel = QLabel(self.glasses_widget)
@@ -83,7 +96,7 @@ class GlassesHub:
         self.lv_start_button : QPushButton = QPushButton(self.glasses_widget)
         self.lv_start_button.setText("Start Live View")
         self.lv_start_button.move(0, 250)
-        self.lv_start_button.clicked.connect(lambda: asyncio.ensure_future(self.lv_start()))
+        self.lv_start_button.clicked.connect(lambda: run_async_thread(self.lv_start))
 
         
 
