@@ -37,8 +37,12 @@ class GlassesHub:
             self.glasses_widget.setWindowTitle("Glasses Hub")
             self.glasses_widget.setGeometry(500, 500, 500, 500)
             self.glasses_widget.closeEvent = self.closeEvent
+            self.recording_ongoing : bool = False  # keep updated for no duplicate recordings
+            self.recording_uuid : str = None
+            self.previous_recording = None
             self.define_ui()
             self.glasses_widget.show()
+            self.connect()  # attempt to auto-connect
 
     def closeEvent(self, event):
         """Function to handle the close event"""
@@ -61,6 +65,39 @@ class GlassesHub:
             print("Calibration successful.")
         else:
             print("Calibration failed.")
+
+    async def start_recording(self):
+        if self.recording_ongoing:
+            logging.info("Warning: Recording ongoing, can't start new recording. Make sure to stop recording.")
+            return
+        async with self.g3.recordings.keep_updated_in_context():
+            await self.g3.recorder.start()
+            logging.info("Creating new recording")
+            self.recording_ongoing = True
+            # now is the time to set folder and names (not uuid)
+            self.recording_uuid = await self.g3.recorder.get_uuid()
+            # self.g3.recorder.set_visible_name(str)
+
+    async def stop_recording(self):
+        if not self.recording_ongoing:
+            logging.info("Warning: Recording not ongoing, nothing to stop.")
+        async with self.g3.recordings.keep_updated_in_context():
+            await self.g3.recorder.stop()    # what if failed?
+            logging.info("Recording stopped")
+            self.recording_ongoing = False
+            # get recording now
+            self.previous_recording = self.g3.recordings.get_recording(self.recording_uuid)  # must it be updated?
+            self.recording_uuid = None
+            # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
+
+    async def cancel_recording(self):
+        if not self.recording_ongoing:
+            logging.info("Warning: Recording not ongoing, nothing to cancel.")
+        async with self.g3.recordings.keep_updated_in_context():
+            await self.g3.recorder.cancel()    # what if failed?
+            logging.info("Recording cancelled")
+            self.recording_ongoing = False
+            self.recording_uuid = None
 
     async def lv_start(self):
         async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
@@ -115,26 +152,43 @@ class GlassesHub:
         self.connection_label.resize(1000, 20)
         self.connection_label.setText("Status: Not Connected")
 
+        # connection buttons
         self.connect_button : QPushButton = QPushButton(self.glasses_widget)
         self.connect_button.setText("Connect")
-        self.connect_button.move(0, 50)
+        self.connect_button.move(50, 50)
         self.connect_button.clicked.connect(lambda: asyncio.ensure_future(self.connect()))
         
         self.disconnect_button : QPushButton = QPushButton(self.glasses_widget)
         self.disconnect_button.setText("Disconnect")
-        self.disconnect_button.move(100, 50)
+        self.disconnect_button.move(150, 50)
         self.disconnect_button.clicked.connect(lambda: asyncio.ensure_future(self.disconnect()))
 
+        # calibration and live_view
         self.calibrate_button : QPushButton = QPushButton(self.glasses_widget)
         self.calibrate_button.setText("Calibrate")
-        self.calibrate_button.move(0, 150)
+        self.calibrate_button.move(150, 100)
         self.calibrate_button.clicked.connect(lambda: asyncio.ensure_future(self.calibrate()))
 
         self.lv_start_button : QPushButton = QPushButton(self.glasses_widget)
         self.lv_start_button.setText("Start Live View")
-        self.lv_start_button.move(0, 250)
+        self.lv_start_button.move(50, 100)
         self.lv_start_button.clicked.connect(lambda: run_async_thread(self.lv_start))
 
+        # recording buttons
+        self.record_start_button : QPushButton = QPushButton(self.glasses_widget)
+        self.record_start_button.setText("Start Recording")
+        self.record_start_button.move(50, 150)
+        self.record_start_button.clicked.connect(lambda: asyncio.ensure_future(self.start_recording()))
         
+        self.record_stop_button : QPushButton = QPushButton(self.glasses_widget)
+        self.record_stop_button.setText("Stop Recording")
+        self.record_stop_button.move(150, 150)
+        self.record_stop_button.clicked.connect(lambda: asyncio.ensure_future(self.stop_recording()))
+
+        self.record_cancel_button : QPushButton = QPushButton(self.glasses_widget)
+        self.record_cancel_button.setText("Cancel Recording")
+        self.record_cancel_button.move(100, 200)
+        self.record_cancel_button.clicked.connect(lambda: asyncio.ensure_future(self.cancel_recording()))
 
 
+# TODO: add safety! to if we didnt stop recording, ways to monitor sd space and battery
