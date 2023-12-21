@@ -6,3 +6,4 @@ pykinect_azure
 numpy
 opencv-python
 pillow
+python-dotenv
