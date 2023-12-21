@@ -7,6 +7,8 @@ from imports import os
 from imports import cv2
 
 import threading
+import logging
+logging.basicConfig(level=logging.INFO)
 
 def run_async_thread(func):
     rtsp_thread : threading.Thread = threading.Thread(target=lambda x: thread_function(x), args=(func,))
@@ -61,16 +63,51 @@ class GlassesHub:
             print("Calibration failed.")
 
     async def lv_start(self):
-        async with self.g3.stream_rtsp(scene_camera=True) as self.streams:
-            async with self.streams.scene_camera.decode() as self.decoded_stream:        
+        async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
+            async with streams.gaze.decode() as gaze_stream, streams.scene_camera.decode() as scene_stream:
                 cv2.namedWindow("Live_View", cv2.WINDOW_NORMAL)
                 prev_key = -1
-                while (prev_key != ord('q')):
-                    frame, _timestamp = await self.decoded_stream.get()
-                    image = frame.to_ndarray(format="bgr24")
-                    cv2.imshow("Live_View", image)  # type: ignore
+                i = 0 # frames
+                while prev_key != ord('q'):
+                    i += 1 # frames
+                    frame, frame_timestamp = await scene_stream.get()
+                    gaze, gaze_timestamp = await gaze_stream.get()
+                    while gaze_timestamp is None or frame_timestamp is None:
+                        if frame_timestamp is None:
+                            frame, frame_timestamp = await scene_stream.get()
+                        if gaze_timestamp is None:
+                            gaze, gaze_timestamp = await gaze_stream.get()
+                    while gaze_timestamp < frame_timestamp:
+                        gaze, gaze_timestamp = await gaze_stream.get()
+                        while gaze_timestamp is None:
+                            gaze, gaze_timestamp = await gaze_stream.get()
+
+                    #logging.info(f"Frame timestamp: {frame_timestamp}")
+                    #logging.info(f"Gaze timestamp: {gaze_timestamp}")
+                    frame = frame.to_ndarray(format="bgr24")
+
+                    # If given gaze data
+                    if "gaze2d" in gaze:
+                        gaze2d = gaze["gaze2d"]
+                        #logging.info(f"Gaze2d: {gaze2d[0]:9.4f},{gaze2d[1]:9.4f}")
+
+                        # Convert rational (x,y) to pixel location (x,y)
+                        h, w = frame.shape[:2]
+                        fix = (int(gaze2d[0] * w), int(gaze2d[1] * h))
+
+                        # Draw gaze
+                        frame = cv2.circle(frame, fix, 10, (0, 0, 255), 3)
+
+                    elif i % 50 == 0:
+                        logging.info(
+                            "No gaze data received. Have you tried putting on the glasses?"
+                        )
+
+                    cv2.imshow("Live_View", frame)  # type: ignore
                     prev_key = cv2.waitKey(1)  # type: ignore
+                
                 cv2.destroyWindow("Live_View")
+
 
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
