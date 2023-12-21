@@ -5,10 +5,16 @@ This client will be used for data collection for netural network training - a CN
 #### Architecture
 We will use python's Tkinter to build the desktop app, and relevant SDK's for handeling the communication with the camera and the glasses.
 
-#### Libraries
+#### Libraries and dependencies
 The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
 ```
 pip install -r .devcontainer/requirements.txt
+```
+We also used the g3pylib library in order to interface with the G3 glasses. In order to install the sub-module that is the g3pylic libray, run the following commands in the following order:
+```
+git submodule init
+git submodule update
+pip install ./g3pylib
 ```
 
 #### Design
