@@ -37,18 +37,24 @@ class GlassesHub:
             self.glasses_widget.setWindowTitle("Glasses Hub")
             self.glasses_widget.setGeometry(500, 500, 500, 500)
             self.glasses_widget.closeEvent = self.closeEvent
-            self.recording_ongoing : bool = False  # keep updated for no duplicate recordings
-            self.recording_uuid : str = None
             self.previous_recording = None
+            self.g3 = None
             self.define_ui()
             self.glasses_widget.show()
-            self.connect()  # attempt to auto-connect
+            self.connect()  # attempt to auto-connect - not working!
 
     def closeEvent(self, event):
         """Function to handle the close event"""
+        logging.info("Glasseshub window closed.")
         self._instance = None
         self._is_initialized = False
-        del self
+        self.__del__()
+
+    def __del__(self):
+        logging.info("Glasseshub instance destroyed.")
+        # in case a recording is in progress, close it
+        asyncio.ensure_future(self.stop_recording())
+        asyncio.ensure_future(self.disconnect())
 
     async def connect(self):
         """Function to connect machine to glasses"""
@@ -67,84 +73,86 @@ class GlassesHub:
             print("Calibration failed.")
 
     async def start_recording(self):
-        if self.recording_ongoing:
+        if await self.g3.recorder.get_uuid() != None:
             logging.info("Warning: Recording ongoing, can't start new recording. Make sure to stop recording.")
             return
         async with self.g3.recordings.keep_updated_in_context():
             await self.g3.recorder.start()
             logging.info("Creating new recording")
-            self.recording_ongoing = True
             # now is the time to set folder and names (not uuid)
-            self.recording_uuid = await self.g3.recorder.get_uuid()
+            # self.recording_uuid = await self.g3.recorder.get_uuid()
             # self.g3.recorder.set_visible_name(str)
 
     async def stop_recording(self):
-        if not self.recording_ongoing:
+        if await self.g3.recorder.get_uuid() == None:
             logging.info("Warning: Recording not ongoing, nothing to stop.")
+            return
         async with self.g3.recordings.keep_updated_in_context():
+            recording_uuid = await self.g3.recorder.get_uuid()
             await self.g3.recorder.stop()    # what if failed?
             logging.info("Recording stopped")
-            self.recording_ongoing = False
             # get recording now
-            self.previous_recording = self.g3.recordings.get_recording(self.recording_uuid)  # must it be updated?
-            self.recording_uuid = None
+            self.previous_recording = self.g3.recordings.get_recording(recording_uuid)  # must it be updated?
+            logging.info(await self.previous_recording.get_http_path())
             # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
 
     async def cancel_recording(self):
-        if not self.recording_ongoing:
+        if await self.g3.recorder.get_uuid() == None:
             logging.info("Warning: Recording not ongoing, nothing to cancel.")
+            return
         async with self.g3.recordings.keep_updated_in_context():
             await self.g3.recorder.cancel()    # what if failed?
             logging.info("Recording cancelled")
-            self.recording_ongoing = False
-            self.recording_uuid = None
 
     async def lv_start(self):
-        async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
-            async with streams.gaze.decode() as gaze_stream, streams.scene_camera.decode() as scene_stream:
-                cv2.namedWindow("Live_View", cv2.WINDOW_NORMAL)
-                prev_key = -1
-                i = 0 # frames
-                while prev_key != ord('q'):
-                    i += 1 # frames
-                    frame, frame_timestamp = await scene_stream.get()
-                    gaze, gaze_timestamp = await gaze_stream.get()
-                    while gaze_timestamp is None or frame_timestamp is None:
-                        if frame_timestamp is None:
-                            frame, frame_timestamp = await scene_stream.get()
-                        if gaze_timestamp is None:
-                            gaze, gaze_timestamp = await gaze_stream.get()
-                    while gaze_timestamp < frame_timestamp:
+        try:
+            async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
+                async with streams.gaze.decode() as gaze_stream, streams.scene_camera.decode() as scene_stream:
+                    cv2.namedWindow("Live_View", cv2.WINDOW_NORMAL)
+                    prev_key = -1
+                    i = 0 # frames
+                    while prev_key != ord('q'):
+                        i += 1 # frames
+                        frame, frame_timestamp = await scene_stream.get()
                         gaze, gaze_timestamp = await gaze_stream.get()
-                        while gaze_timestamp is None:
+                        while gaze_timestamp is None or frame_timestamp is None:
+                            if frame_timestamp is None:
+                                frame, frame_timestamp = await scene_stream.get()
+                            if gaze_timestamp is None:
+                                gaze, gaze_timestamp = await gaze_stream.get()
+                        while gaze_timestamp < frame_timestamp:
                             gaze, gaze_timestamp = await gaze_stream.get()
+                            while gaze_timestamp is None:
+                                gaze, gaze_timestamp = await gaze_stream.get()
 
-                    #logging.info(f"Frame timestamp: {frame_timestamp}")
-                    #logging.info(f"Gaze timestamp: {gaze_timestamp}")
-                    frame = frame.to_ndarray(format="bgr24")
+                        #logging.info(f"Frame timestamp: {frame_timestamp}")
+                        #logging.info(f"Gaze timestamp: {gaze_timestamp}")
+                        frame = frame.to_ndarray(format="bgr24")
 
-                    # If given gaze data
-                    if "gaze2d" in gaze:
-                        gaze2d = gaze["gaze2d"]
-                        #logging.info(f"Gaze2d: {gaze2d[0]:9.4f},{gaze2d[1]:9.4f}")
+                        # If given gaze data
+                        if "gaze2d" in gaze:
+                            gaze2d = gaze["gaze2d"]
+                            #logging.info(f"Gaze2d: {gaze2d[0]:9.4f},{gaze2d[1]:9.4f}")
 
-                        # Convert rational (x,y) to pixel location (x,y)
-                        h, w = frame.shape[:2]
-                        fix = (int(gaze2d[0] * w), int(gaze2d[1] * h))
+                            # Convert rational (x,y) to pixel location (x,y)
+                            h, w = frame.shape[:2]
+                            fix = (int(gaze2d[0] * w), int(gaze2d[1] * h))
 
-                        # Draw gaze
-                        frame = cv2.circle(frame, fix, 10, (0, 0, 255), 3)
+                            # Draw gaze
+                            frame = cv2.circle(frame, fix, 10, (0, 0, 255), 3)
 
-                    elif i % 50 == 0:
-                        logging.info(
-                            "No gaze data received. Have you tried putting on the glasses?"
-                        )
+                        elif i % 50 == 0:
+                            logging.info(
+                                "No gaze data received. Have you tried putting on the glasses?"
+                            )
 
-                    cv2.imshow("Live_View", frame)  # type: ignore
-                    prev_key = cv2.waitKey(1)  # type: ignore
-                
-                cv2.destroyWindow("Live_View")
-
+                        cv2.imshow("Live_View", frame)  # type: ignore
+                        prev_key = cv2.waitKey(1)  # type: ignore
+                    
+                    cv2.destroyWindow("Live_View")
+        except Exception as e:
+            logging.error(str(e))
+        
 
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
@@ -189,6 +197,4 @@ class GlassesHub:
         self.record_cancel_button.setText("Cancel Recording")
         self.record_cancel_button.move(100, 200)
         self.record_cancel_button.clicked.connect(lambda: asyncio.ensure_future(self.cancel_recording()))
-
-
 # TODO: add safety! to if we didnt stop recording, ways to monitor sd space and battery
