@@ -26,10 +26,12 @@ class KinectHub:
 
     def __init__(self, main_hub_widget: QWidget):
         if not self._is_initialized:
-            
+            self.is_recording: bool = False
+            self.is_live_view: bool = False
             self.FILEPATH = self.configure_recordings_file()
             self._is_initialized : bool = True
             self.device : Device = None
+            self.device_handle : int = None
             self.current_image : Image = None
             self.main_hub_widget : QWidget = main_hub_widget
             # define the device configuration
@@ -81,9 +83,13 @@ class KinectHub:
 
     def start_recording(self) -> None:
         """Function to start recording the kinect camera"""
-        self.start_kinect_record()
+        if self.is_live_view:
+            print("not able to start recording when in live view")
+            return
+        self.configure_camera_rec()
         if self.device is None:
             return
+        self.is_recording = True
         live_view_thread : threading.Thread = threading.Thread(target=self.start_recording_thread)
         live_view_thread.start()
 
@@ -124,6 +130,7 @@ class KinectHub:
                 break
         cv2.destroyWindow("Recording")
         self.stop_kinect()
+        self.is_recording = False
     
 
 
@@ -131,10 +138,14 @@ class KinectHub:
 
     def live_view(self, record: bool = False) -> None:
         """Function to open the live view in the kinect camera in a seperate thread"""
-        self.start_kinect()
+        if self.is_recording:
+            print("not able to start live view when recording")
+            return
+        self.configure_camera()
         if self.device is None:
             return
         # Start the live view in a seperate thread
+        self.is_live_view = True
         live_view_thread: threading.Thread = threading.Thread(target=self.live_view_thread, args=(self.device,))
         live_view_thread.start()
         # Wait for the thread to finish
@@ -169,12 +180,16 @@ class KinectHub:
                 cv2.destroyWindow("Live View")
                 break
         self.stop_kinect()
+        self.is_live_view = False
    
     def configure_camera(self) -> None:
         """Function to configure the camera"""
         pykinect.initialize_libraries()
         try:
-            self.device = pykinect.start_device(config=self.device_config)
+            if self.device is None:
+                self.device = pykinect.start_device(config=self.device_config)
+            else:
+                self.device.start(self.device_config)
         except SystemExit as exception:
             print(exception)
             return None
@@ -183,26 +198,30 @@ class KinectHub:
         """Function to configure the camera"""
         pykinect.initialize_libraries()
         try:
-            self.device = pykinect.start_device(config=self.device_config, record=True, record_filepath=self.FILEPATH)
+            if self.device is None:
+                self.device = pykinect.start_device(config=self.device_config, record=True, record_filepath=self.FILEPATH)
+            else:
+                self.device.start(self.device_config, True, record_filepath=self.FILEPATH)
         except SystemExit as exception:
             print(exception)
             return None
         
-    def start_kinect(self) -> None:
-        """Function to configure the device"""
-        if self.device is None:
-            self.configure_camera()
+    # def start_kinect(self) -> None:
+    #     """Function to configure the device"""
+    #     self.configure_camera()
 
-    def start_kinect_record(self) -> None:
-        """Function to configure the device"""
-        if self.device is None:
-            self.configure_camera_rec()
+    # def start_kinect_record(self) -> None:
+    #     """Function to configure the device"""
+    #     self.configure_camera_rec()
     
     def stop_kinect(self) -> None:
         """Function to stop the kinect"""
         if self.device is not None:
-            self.device.close()
-            self.device = None
+            self.device.stop_cameras()
+            self.device.stop_imu()
+            self.device.record = None
+            self.device.recording = False
+
     
 
     def get_medium_res_confguration(self) -> Configuration:
