@@ -103,6 +103,10 @@ class KinectHub:
             # Get color image
             ret_color, color_image = capture.get_transformed_color_image()
 
+            # get the imu data from the capture
+            imu: ImuSample = capture.get_imu_sample()
+
+
             # Get the colored depth
             ret_depth, depth_color_image = capture.get_colored_depth_image()
 
