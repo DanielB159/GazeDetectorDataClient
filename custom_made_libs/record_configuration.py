@@ -26,14 +26,6 @@ class RecordConfiguration:
             self.__dict__[name] = value
         
 
-    def __getattr__(self, name):
-        """Pass the handle parameter, when asked"""
-        if name == "_handle":
-            return self.__dict__[name]
-        else:
-            return self._handle.__dict__[name]
-
-
     def __str__(self):
         """Print the current settings and a short explanation"""
         message = (

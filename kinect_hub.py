@@ -152,7 +152,6 @@ class KinectHub:
 
     def start_recording(self) -> None:
         """Function to start recording the kinect camera"""
-        self.get_low_res_configuration_rec()
         if self.is_live_view:
             print("not able to start recording when in live view")
             return
@@ -279,6 +278,7 @@ class KinectHub:
                 self.device.start(self.device_config)
         except SystemExit as exception:
             print(exception)
+            print("device not connected or is not able to show live view")
             return None
     
     def configure_camera_rec(self) -> None:
@@ -291,6 +291,7 @@ class KinectHub:
                 self.device.start(self.device_config, True, record_filepath=self.FILEPATH)
         except SystemExit as exception:
             print(exception)
+            print("device not connected or is not able to record")
             return None
         
     # def start_kinect(self) -> None:
