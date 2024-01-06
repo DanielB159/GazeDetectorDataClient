@@ -8,7 +8,11 @@ import time
 import sys
 import os
 import asyncio
-from pykinect_azure.k4arecord import Record, RecordConfiguration, Playback
+import numpy as np
+from pykinect_azure.k4arecord import _k4arecord
+from pykinect_azure.k4a import _k4a
+from pykinect_azure.k4arecord import Playback
+from custom_made_libs.record_configuration import RecordConfiguration, default_configuration_record
 from pykinect_azure.k4a import Device, Capture, Image, Configuration, ImuSample
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit
@@ -36,7 +40,8 @@ class KinectHub:
             self.current_image : Image = None
             self.kinect_hub_widget : QWidget = kinect_hub_widget
             # define the device configuration
-            self.device_config = self.get_low_res_configuration()
+            self.device_config : Configuration = self.get_low_res_configuration()
+            self.device_config_rec : RecordConfiguration = self.get_low_res_configuration_rec()
             # define the device UI
             self.define_ui()
             self.kinect_hub_widget.show()
@@ -93,7 +98,10 @@ class KinectHub:
 
         cv2.namedWindow('Playback', cv2.WINDOW_NORMAL)
         while True:
-
+            # imu_sample_struct = _k4a.k4a_imu_sample_t()
+            # _k4arecord.k4a_playback_get_next_imu_sample(playback._handle, imu_sample_struct)
+            # imu_sample : ImuSample = ImuSample(imu_sample_struct)
+            # print(imu_sample)
             # Get camera capture
             ret, capture = playback.update()
 
@@ -101,22 +109,24 @@ class KinectHub:
                 break
 
             # Get color image
-            ret_color, color_image = capture.get_transformed_color_image()
+            image_obj: Image = capture.get_color_image_object()
+            ret_color, color_image = image_obj.to_numpy()
+            
 
             # get the imu data from the capture
-            imu: ImuSample = capture.get_imu_sample()
+            # imu: ImuSample = playback.get_next_imu_sample()
+            # print(imu.acc_timestamp_usec)
 
 
-            # Get the colored depth
-            ret_depth, depth_color_image = capture.get_colored_depth_image()
+            # # Get the colored depth
+            # ret_depth, depth_color_image = capture.get_colored_depth_image()
 
-            if not ret_color or not ret_depth:
+            if not ret_color:
                 continue
 
             # Plot the image
-            combined_image = cv2.addWeighted(color_image[:, :, :3], 0.7, depth_color_image, 0.3, 0)
-            cv2.imshow('Depth Image', combined_image)
-
+            image : np.ndarray = cv2.putText(color_image, "PlayBack", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.imshow('Playback', image)
             # Press q key to stop
             if cv2.waitKey(30) == ord('q'):
                 break
@@ -142,6 +152,7 @@ class KinectHub:
 
     def start_recording(self) -> None:
         """Function to start recording the kinect camera"""
+        self.get_low_res_configuration_rec()
         if self.is_live_view:
             print("not able to start recording when in live view")
             return
@@ -182,7 +193,7 @@ class KinectHub:
             # if the capture did not succeed, then continue
             if not ret:
                 continue
-            image = cv2.putText(raw_color_image, "Recording", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+            image : np.ndarray = cv2.putText(raw_color_image, "Recording", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
             cv2.imshow("Recording", image)
 
             # Press q to exit
@@ -242,7 +253,7 @@ class KinectHub:
             # print(imu.acc_timestamp_usec)
             # print("imu time gyro")
             # print(imu.gyro_timestamp_usec)
-            image = cv2.putText(raw_color_image, "Live View", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            image : np.ndarray = cv2.putText(raw_color_image, "Live View", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
             cv2.imshow("Live View", image)
 
             # Press q to exit
@@ -275,7 +286,7 @@ class KinectHub:
         pykinect.initialize_libraries()
         try:
             if self.device is None:
-                self.device = pykinect.start_device(config=self.device_config, record=True, record_filepath=self.FILEPATH)
+                self.device = pykinect.start_device(config=self.device_config_rec, record=True, record_filepath=self.FILEPATH)
             else:
                 self.device.start(self.device_config, True, record_filepath=self.FILEPATH)
         except SystemExit as exception:
@@ -309,6 +320,20 @@ class KinectHub:
 
     def get_low_res_configuration(self) -> Configuration:
         config: Configuration = pykinect.default_configuration
+        config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
+        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
+        config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
+        return config
+    
+    def get_medium_res_confguration_rec(self) -> RecordConfiguration:
+        config: RecordConfiguration = default_configuration_record
+        config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
+        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
+        config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_NV12
+        return config
+
+    def get_low_res_configuration_rec(self) -> RecordConfiguration:
+        config: RecordConfiguration = default_configuration_record
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
         config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
