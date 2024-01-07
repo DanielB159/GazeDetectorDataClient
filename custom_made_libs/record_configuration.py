@@ -10,7 +10,7 @@ class RecordConfiguration:
         else:
             self.create()
     
-    def hande(self):
+    def handle(self):
         return self._handle
     
     def __setattr__(self, name: str, value: Any) -> None:
@@ -51,8 +51,8 @@ class RecordConfiguration:
         self.depth_mode = _k4a.K4A_DEPTH_MODE_WFOV_2X2BINNED
         self.camera_fps = _k4a.K4A_FRAMES_PER_SECOND_30
         self.color_track_enabled = True
-        self.depth_track_enabled = True
-        self.ir_track_enabled = True
+        self.depth_track_enabled = False
+        self.ir_track_enabled = False
         self.imu_track_enabled = True
         self.depth_delay_off_color_usec = 0
         self.wired_sync_mode = _k4a.K4A_WIRED_SYNC_MODE_STANDALONE

@@ -95,16 +95,14 @@ class KinectHub:
         playback: Playback = pykinect.start_playback(path)
         # playback_config = playback.get_record_configuration()
         # print(playback_config)
-
+        print("the playback length is " + str(playback.get_recording_length()) + " microseconds")
         cv2.namedWindow('Playback', cv2.WINDOW_NORMAL)
+        i = 0
         while True:
-            # imu_sample_struct = _k4a.k4a_imu_sample_t()
-            # _k4arecord.k4a_playback_get_next_imu_sample(playback._handle, imu_sample_struct)
-            # imu_sample : ImuSample = ImuSample(imu_sample_struct)
-            # print(imu_sample)
             # Get camera capture
             ret, capture = playback.update()
-
+            i += 33739.69512
+            print(i)
             if not ret:
                 break
 
@@ -286,7 +284,7 @@ class KinectHub:
         pykinect.initialize_libraries()
         try:
             if self.device is None:
-                self.device = pykinect.start_device(config=self.device_config_rec, record=True, record_filepath=self.FILEPATH)
+                self.device = pykinect.start_device(config=self.device_config, record=True, record_filepath=self.FILEPATH)
             else:
                 self.device.start(self.device_config, True, record_filepath=self.FILEPATH)
         except SystemExit as exception:
@@ -326,15 +324,15 @@ class KinectHub:
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
         return config
     
-    def get_medium_res_confguration_rec(self) -> RecordConfiguration:
-        config: RecordConfiguration = default_configuration_record
+    def get_medium_res_confguration_rec(self) -> Configuration:
+        config: Configuration = pykinect.default_configuration
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
         config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_NV12
         return config
 
-    def get_low_res_configuration_rec(self) -> RecordConfiguration:
-        config: RecordConfiguration = default_configuration_record
+    def get_low_res_configuration_rec(self) -> Configuration:
+        config: Configuration = pykinect.default_configuration
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
         config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
