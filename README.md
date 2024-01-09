@@ -21,7 +21,7 @@ pip install ./g3pylib
 In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
 In order to record using this client and using the glasses, both the computer running the client and the glasses need to be connected to an NTP server. 
 
-###### Connecting the computer to an NTP server
+#### Connecting the computer to an NTP server
 The computer which is running the client needs to also be connected to an NTP server because it's time is used as an initial value to all of the offsets that are recorded in the kinect (the python library datetime uses the OS internal clock which is determined by the NTP server). To connect the computer to the NTP server: `server 0.il.pool.ntp.org` follow these instructions (Assuming that you are running Windows): 
 1. Open Settings: Go to "Settings" > "Time & Language".
 2. Click on "Additional date, time, & regional settings" under the "Related settings" section.
