@@ -17,6 +17,12 @@ git submodule update
 pip install ./g3pylib
 ```
 
+### Kinect Hub
+The kinect hub has the current functionality:
+- Get live view of the current camera feed.
+- Record a video feed from the current camera.
+  **Note:** The recording does not save a recording file, but saves the recording in **images** in the filepath recordings/recording(x) where x is the lowest natural number that is not taken in this path. After the recording is done a *start_timestamp.txt* file is also saved with the UTC+2 start time of the recording (Israel time).
+
 #### Design
 ##### The client will have one main hub screen:
 ![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
