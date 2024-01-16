@@ -34,14 +34,11 @@ class GlassesHub:
         if not self._is_initialized:
             self._is_initialized = True
             self.glasses_widget : QWidget = glasses_hub_widget
-            self.glasses_widget.setWindowTitle("Glasses Hub")
-            self.glasses_widget.setGeometry(500, 500, 500, 500)
-            self.glasses_widget.closeEvent = self.closeEvent
+            self.define_ui()
             self.previous_recording = None
             self.g3 = None
-            self.define_ui()
             self.glasses_widget.show()
-            self.connect()  # attempt to auto-connect - not working!
+            asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
     def closeEvent(self, event):
         """Function to handle the close event"""
@@ -156,6 +153,10 @@ class GlassesHub:
 
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
+        self.glasses_widget.setWindowTitle("Glasses Hub")
+        self.glasses_widget.setGeometry(500, 500, 500, 500)
+        self.glasses_widget.closeEvent = self.closeEvent
+
         self.connection_label : QLabel = QLabel(self.glasses_widget)
         self.connection_label.resize(1000, 20)
         self.connection_label.setText("Status: Not Connected")
