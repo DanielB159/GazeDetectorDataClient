@@ -1,0 +1,184 @@
+import json # import somewhere else
+import os   # later do for the entire directory
+import cv2
+#import shutil
+import gzip
+import heapq
+
+rec_dir_loc = './recordings'    #linux?
+rec_name = 'test'
+
+class FrameData:
+    def __init__(self):
+        self.kinect_image : str = None      # name of timestamp.png
+        self.glasses_imu : dict = None      # current imu data
+        self.glasses_gaze : dict = None     # current gaze data
+        self.glasses_image : float = None   # cv2 float
+        self.gyro_state : (float, float, float) = None
+
+    def save_frame(self):
+        print("test")   # save current frame to a new folder
+
+    # need more incapsulation for adding imu and shit
+    def update_kinect_image(self, name : str):
+        self.kinect_image = name
+    
+    def update_glasses_imu(self, data : str):
+        self.glasses_imu = data
+    
+    def update_glasses_gaze(self, data : str):
+        self.glasses_gaze = data
+    
+    def update_glasses_image(self, image: float):
+        self.glasses_image = image
+
+def process_frames():
+    current_dir = rec_dir_loc + '/' + rec_name
+    
+    with gzip.open(current_dir + '/Glasses3/gazedata.gz', 'rb') as f:
+        lines = f.readlines()
+        glasses_gaze_data = []  # keys are timestamps!
+        for line in lines:
+            dict = json.loads(line[: -1])
+            glasses_gaze_data.append((dict["timestamp"], dict))
+        heapq.heapify(glasses_gaze_data)
+        #print(glasses_gaze_data)
+
+    # with open(current_dir + '/Glasses3/gazedata.gz') as f:
+    #     glasses_gaze_data = json.load(f)
+    #     print(glasses_gaze_data)
+    
+    with gzip.open(current_dir + '/Glasses3/imudata.gz', 'rb') as f:    # split to accel and magno
+        lines = f.readlines()
+        glasses_imu_data = []
+        for line in lines:
+            dict = json.loads(line[: -1])
+            is_magnetometer = False
+            if "magnetometer" in dict["data"]:
+                is_magnetometer = True
+                # to separate equal timestamps
+            glasses_imu_data.append((dict["timestamp"], is_magnetometer, dict))
+        heapq.heapify(glasses_imu_data)
+        #print(glasses_imu_data)
+
+    # with open(current_dir + '/Glasses3/imudata.gz') as f:
+    #     glasses_imu_data = json.load(f)
+    
+    glasses_video = cv2.VideoCapture(current_dir + '/Glasses3/scenevideo.mp4')
+    glasses_video_fps = glasses_video.get(cv2.CAP_PROP_FPS)
+    glasses_video_frame_total = glasses_video.get(cv2.CAP_PROP_FRAME_COUNT)  # total frame count
+
+    kinect_images_strings = os.listdir(current_dir + '/Kinect') # list of file names
+    kinect_images_timestamps = []
+    for s in kinect_images_strings:
+        if (s[-4:] == ".png"):
+            try:
+                kinect_images_timestamps.append(int(s[:-4]))
+            except:
+                print("Warning: " + s + " is not in the correct format for a Kinect recording file.")
+    heapq.heapify(kinect_images_timestamps)
+
+    # now create a dictionary with time, type, and info
+    # perhaps for things like mp4 have the info just be frame number or next frame
+
+    # HOW TO READ FROM MP4
+    # while success: 
+  
+    #     # vidObj object calls read 
+    #     # function extract frames 
+    #     success, image = vidObj.read() 
+  
+    #     # Saves the frames with frame-count 
+    #     cv2.imwrite("frame%d.jpg" % count, image) 
+  
+    #     count += 1
+
+    # FROM THIS POINT ON, ASSUME SYNCHRONIZATION
+    glasses_imu_start = 0   # start time relative to outer video
+    glasses_gaze_start = 0
+    glasses_video_start = 0
+    kinect_video_start = 0  # will always be 0 since this is the relative point - 10^-6 of a second
+
+    MAX_INT = pow(2, 32)
+    current_frame = FrameData()
+
+    # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
+    # TODO: actually update the gyro stuff
+    # init minimal values
+    vid_frame_exists, image = glasses_video.read()
+    if (vid_frame_exists):
+        min_glasses_video_timestamp = glasses_video.get(cv2.CAP_PROP_POS_MSEC)
+    else:
+        min_glasses_video_timestamp = MAX_INT
+    if (len(kinect_images_timestamps) > 0):
+        min_kinect_timestamp = kinect_images_timestamps[0]
+    else:
+        min_kinect_timestamp = MAX_INT
+    if (len(glasses_gaze_data) > 0):
+        min_gaze_timestamp = glasses_gaze_data[0][0]
+    else:
+        min_gaze_timestamp = MAX_INT
+    if (len(glasses_imu_data) > 0):
+        min_glasses_imu_timestamp = glasses_imu_data[0][0]
+    else:
+        min_glasses_imu_timestamp = MAX_INT
+
+    while len(kinect_images_timestamps) > 0:
+        min_timestamp = min(min_glasses_video_timestamp,
+                            min_glasses_imu_timestamp,
+                            min_gaze_timestamp,
+                            min_kinect_timestamp)
+        print(min_timestamp)
+
+        # prio updating before saving a new kinect image
+        if (min_timestamp == min_glasses_video_timestamp):
+            current_frame.update_glasses_image(image)
+            vid_frame_exists, image = glasses_video.read()
+            # update min glasses timestamp
+            if (vid_frame_exists):
+                min_glasses_video_timestamp = glasses_video.get(cv2.CAP_PROP_POS_MSEC)
+            else:
+                # doesnt exist, remove image?
+                min_glasses_video_timestamp = MAX_INT
+        elif (min_timestamp == min_gaze_timestamp):
+            current_frame.update_glasses_gaze(glasses_gaze_data[0][1])
+            # update min glasses timestamp
+            if (len(glasses_gaze_data) > 1):
+                # if not then cant pop
+                heapq.heappop(glasses_gaze_data)
+                min_gaze_timestamp = glasses_gaze_data[0][0]
+            else:
+                # doesnt exist, remove image cuz outdated?
+                if (len(glasses_gaze_data) == 1):
+                    # empty the queue
+                    heapq.heappop(glasses_gaze_data)
+                min_gaze_timestamp = MAX_INT
+        elif (min_timestamp == min_glasses_imu_timestamp):
+            current_frame.update_glasses_imu(glasses_imu_data[0][2])
+            # update min glasses timestamp
+            if (len(glasses_imu_data) > 1):
+                # if not then cant pop
+                heapq.heappop(glasses_imu_data)
+                min_glasses_imu_timestamp = glasses_imu_data[0][0]
+            else:
+                if (len(glasses_gaze_data) == 1):
+                    # empty the queue
+                    heapq.heappop(glasses_imu_data)
+                min_glasses_imu_timestamp = MAX_INT
+        elif (min_timestamp == min_kinect_timestamp):
+            current_frame.update_kinect_image(kinect_images_timestamps[0])
+            current_frame.save_frame()  # save each frame of kinect data
+            # update min kinect timestamp
+            if (len(kinect_images_timestamps) > 1):
+                # if not then cant pop
+                heapq.heappop(kinect_images_timestamps)
+                min_kinect_timestamp = kinect_images_timestamps[0]
+            else:
+                if (len(kinect_images_timestamps) == 1):
+                    # empty the queue
+                    heapq.heappop(kinect_images_timestamps)
+                min_kinect_timestamp = MAX_INT
+        else:
+            print ("Error: timestamp does not exist.")
+
+process_frames()
