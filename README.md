@@ -17,6 +17,20 @@ git submodule update
 pip install ./g3pylib
 ```
 
+### Recordings file structure
+```
+recordings: 
+    > recording_name:
+        > Glasses3:
+            start_timestamp.txt
+            gazedata.gz
+            imudata.gz
+            scenevideo.mp4
+        > Kinect:
+            start_timestamp.txt
+            [timestamp].png
+```
+
 #### Design
 ##### The client will have one main hub screen:
 ![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
