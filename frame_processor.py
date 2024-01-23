@@ -1,39 +1,72 @@
 import json # import somewhere else
 import os   # later do for the entire directory
 import cv2
-#import shutil
+import shutil
 import gzip
 import heapq
+import numpy as np
 
-rec_dir_loc = './recordings'    #linux?
+REC_DIR_LOC = './recordings'    #linux?
+POST_DIR_LOC = './processed_recordings'
 rec_name = 'test'
 
 class FrameData:
-    def __init__(self):
+    def __init__(self, recording_name: str, timestamp_offset: float, glasses_gyro : np.array):
+        self.recording_name = recording_name
+        
         self.kinect_image : str = None      # name of timestamp.png
         self.glasses_imu : dict = None      # current imu data
         self.glasses_gaze : dict = None     # current gaze data
         self.glasses_image : float = None   # cv2 float
-        self.gyro_state : (float, float, float) = None
+
+        # IMPORTANT assume all timestamps given are in absolute time (meaning already added the offset)
+        self.gyro_state : np.array = glasses_gyro   # 3d vector of direction relative to glasses
+        self.gyro_timestamp : float = timestamp_offset
 
     def save_frame(self):
-        print("test")   # save current frame to a new folder
+        # TODO: dont let it override
+        recording_path = REC_DIR_LOC + "/" + self.recording_name
+        post_path = POST_DIR_LOC + "/" + self.recording_name
+        if (not os.path.exists(post_path)):
+            # create recording directory if none exist
+            os.mkdir(post_path)
+        if (os.path.exists(post_path + "/" + self.kinect_image_name)):
+            # remove frame to replace it if already exists
+            shutil.rmtree(post_path + "/" + self.kinect_image_name)
+        
+        os.mkdir(post_path + "/" + self.kinect_image_name)    # create dir for frame
+        shutil.copy2(recording_path + "/Kinect/" + self.kinect_image_name + ".png",
+                     post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + ".png")
+        
+        imu_file = open(post_path + "/" + self.kinect_image_name + "/imu_data.txt", 'w')
+        imu_file.write(str(self.gyro_state))
+        imu_file.close()
+
+        print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
 
     # need more incapsulation for adding imu and shit
-    def update_kinect_image(self, name : str):
-        self.kinect_image = name
+    def update_kinect_image(self, name : int):
+        self.kinect_image_name = str(name)
+        # timestamp is 10^(-6)
     
-    def update_glasses_imu(self, data : str):
+    def update_glasses_imu(self, data : dict):
+        if "gyroscope" in data["data"]:
+            # update gyro
+            deltaTime = data["timestamp"] - self.gyro_timestamp
+            print(data["data"]["gyroscope"])
+            temp = deltaTime * np.array(data["data"]["gyroscope"], float)
+            self.gyro_state += temp
+            self.gyro_timestamp = data["timestamp"]
         self.glasses_imu = data
     
-    def update_glasses_gaze(self, data : str):
+    def update_glasses_gaze(self, data : dict):
         self.glasses_gaze = data
     
     def update_glasses_image(self, image: float):
         self.glasses_image = image
 
 def process_frames():
-    current_dir = rec_dir_loc + '/' + rec_name
+    current_dir = REC_DIR_LOC + '/' + rec_name
     
     with gzip.open(current_dir + '/Glasses3/gazedata.gz', 'rb') as f:
         lines = f.readlines()
@@ -100,7 +133,8 @@ def process_frames():
     kinect_video_start = 0  # will always be 0 since this is the relative point - 10^-6 of a second
 
     MAX_INT = pow(2, 32)
-    current_frame = FrameData()
+    KINECT_MUL = pow(10, -6)
+    current_frame = FrameData(recording_name=rec_name ,timestamp_offset=glasses_imu_start, glasses_gyro=np.array([0, 0, 0], float))
 
     # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
     # TODO: actually update the gyro stuff
@@ -111,7 +145,7 @@ def process_frames():
     else:
         min_glasses_video_timestamp = MAX_INT
     if (len(kinect_images_timestamps) > 0):
-        min_kinect_timestamp = kinect_images_timestamps[0]
+        min_kinect_timestamp = kinect_images_timestamps[0] * KINECT_MUL
     else:
         min_kinect_timestamp = MAX_INT
     if (len(glasses_gaze_data) > 0):
@@ -172,7 +206,7 @@ def process_frames():
             if (len(kinect_images_timestamps) > 1):
                 # if not then cant pop
                 heapq.heappop(kinect_images_timestamps)
-                min_kinect_timestamp = kinect_images_timestamps[0]
+                min_kinect_timestamp = kinect_images_timestamps[0] * KINECT_MUL
             else:
                 if (len(kinect_images_timestamps) == 1):
                     # empty the queue

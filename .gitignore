@@ -7,3 +7,4 @@ app
 dist
 __pycache__
 recordings*
+processed_recordings*

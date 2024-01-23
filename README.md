@@ -30,12 +30,26 @@ The computer which is running the client needs to also be connected to an NTP se
 5. Check "Synchronize with an Internet time server", enter the NTP server address `0.il.pool.ntp.org`, and click "Update now".
 6. Apply and OK: Click "OK" to apply the settings.
 
+### Recordings file structure
+```
+recordings: 
+    > recording_name:
+        > Glasses3:
+            start_timestamp.txt
+            gazedata.gz
+            imudata.gz
+            scenevideo.mp4
+        > Kinect:
+            start_timestamp.txt
+            [timestamp].png
+```
 
 ### Kinect Hub
 The kinect hub has the current functionality:
 - Get live view of the current camera feed.
 - Record a video feed from the current camera.
   **Note:** The recording does not save a recording file, but saves the recording in **images** in the filepath recordings/recording(x) where x is the lowest natural number that is not taken in this path. After the recording is done a *start_timestamp.txt* file is also saved with the UTC+2 start time of the recording (Israel time).
+
 
 #### Design
 ##### The client will have one main hub screen:
