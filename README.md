@@ -17,6 +17,19 @@ git submodule update
 pip install ./g3pylib
 ```
 
+### NTP (Network Time Protocol)
+In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
+In order to record using this client and using the glasses, both the computer running the client and the glasses need to be connected to an NTP server. 
+
+#### Connecting the computer to an NTP server
+The computer which is running the client needs to also be connected to an NTP server because it's time is used as an initial value to all of the offsets that are recorded in the kinect (the python library datetime uses the OS internal clock which is determined by the NTP server). To connect the computer to the NTP server: `0.il.pool.ntp.org` follow these instructions (Assuming that you are running Windows): 
+1. Open Settings: Go to "Settings" > "Time & Language".
+2. Click on "Additional date, time, & regional settings" under the "Related settings" section.
+3. Click on "Set the time and date".
+4. Go to the "Internet Time" tab and click "Change settings".
+5. Check "Synchronize with an Internet time server", enter the NTP server address `0.il.pool.ntp.org`, and click "Update now".
+6. Apply and OK: Click "OK" to apply the settings.
+
 ### Recordings file structure
 ```
 recordings: 
@@ -30,6 +43,13 @@ recordings:
             start_timestamp.txt
             [timestamp].png
 ```
+
+### Kinect Hub
+The kinect hub has the current functionality:
+- Get live view of the current camera feed.
+- Record a video feed from the current camera.
+  **Note:** The recording does not save a recording file, but saves the recording in **images** in the filepath recordings/recording(x) where x is the lowest natural number that is not taken in this path. After the recording is done a *start_timestamp.txt* file is also saved with the UTC+2 start time of the recording (Israel time).
+
 
 #### Design
 ##### The client will have one main hub screen:
