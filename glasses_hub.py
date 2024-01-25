@@ -44,12 +44,17 @@ class GlassesHub:
             self.battery_level: float = 0
             self.storage_free: int = 0
             self.storage_size: int = 1
+            self.recording_folder_name : str = None
             self.define_ui()
             self.previous_recording = None  # TODO: ADD TYPING
             self.g3: Glasses3 = None
             self.isConnected: bool = False
             self.glasses_widget.show()
-            asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
+            #asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
+
+    def is_able_to_record(self):
+        # TODO: dummy function
+        return True
 
     def closeEvent(self, event):
         """Function to handle the close event"""
@@ -87,7 +92,7 @@ class GlassesHub:
         else:
             print("Calibration failed.")
 
-    async def start_recording(self):
+    async def _start_recording(self):
         if await self.g3.recorder.get_uuid() != None:
             logging.info(
                 "Warning: Recording ongoing, can't start new recording. Make sure to stop recording."
@@ -99,8 +104,12 @@ class GlassesHub:
             # now is the time to set folder and names (not uuid)
             # self.recording_uuid = await self.g3.recorder.get_uuid()
             # self.g3.recorder.set_visible_name(str)
+    
+    def start_recording(self, recording_folder_name : str):
+        self.recording_folder_name = recording_folder_name
+        asyncio.ensure_future(self._start_recording())
 
-    async def stop_recording(self):
+    async def _stop_recording(self):
         if await self.g3.recorder.get_uuid() == None:
             logging.info("Warning: Recording not ongoing, nothing to stop.")
             return
@@ -115,13 +124,19 @@ class GlassesHub:
             logging.info(await self.previous_recording.get_http_path())
             # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
 
-    async def cancel_recording(self):
+    def stop_recording(self):
+        asyncio.ensure_future(self._stop_recording())
+
+    async def _cancel_recording(self):
         if await self.g3.recorder.get_uuid() == None:
             logging.info("Warning: Recording not ongoing, nothing to cancel.")
             return
         async with self.g3.recordings.keep_updated_in_context():
             await self.g3.recorder.cancel()  # what if failed?
             logging.info("Recording cancelled")
+
+    def cancel_recording(self):
+        asyncio.ensure_future(self._cancel_recording())
 
     async def get_sd_and_battery_info(self):
         # define the requests
@@ -252,21 +267,21 @@ class GlassesHub:
         self.record_start_button.setText("Start Recording")
         self.record_start_button.move(50, 150)
         self.record_start_button.clicked.connect(
-            lambda: asyncio.ensure_future(self.start_recording())
+            lambda: self.start_recording("solo_recording")
         )
 
         self.record_stop_button: QPushButton = QPushButton(self.glasses_widget)
         self.record_stop_button.setText("Stop Recording")
         self.record_stop_button.move(150, 150)
         self.record_stop_button.clicked.connect(
-            lambda: asyncio.ensure_future(self.stop_recording())
+            lambda: self.stop_recording()
         )
 
         self.record_cancel_button: QPushButton = QPushButton(self.glasses_widget)
         self.record_cancel_button.setText("Cancel Recording")
         self.record_cancel_button.move(100, 200)
         self.record_cancel_button.clicked.connect(
-            lambda: asyncio.ensure_future(self.cancel_recording())
+            lambda: self.cancel_recording()
         )
 
         # get SD card info an Battery info

@@ -71,6 +71,9 @@ class KinectHub:
         input_playback_filepath: QLineEdit = QLineEdit(self.kinect_hub_widget)
         input_playback_filepath.move(200, 250)
 
+    def is_able_to_record(self):
+        # TODO: dummy function
+        return True
 
     def closeEvent(self, event) -> None:
         """Function to handle the close event"""
@@ -147,12 +150,12 @@ class KinectHub:
 
     #     # if the capture did not succeed, then continue
 
-    def start_recording(self) -> None:
+    def start_recording(self, recording_folder_name) -> None:
         """Function to start recording the kinect camera"""
         if self.is_live_view:
             print("not able to start recording when in live view")
             return
-        self.FILEPATH = self.configure_recordings_file()
+        self.FILEPATH = self.configure_recordings_file(recording_folder_name)
         self.configure_camera()
         if self.device is None:
             return
@@ -160,21 +163,17 @@ class KinectHub:
         start_recording_thread : threading.Thread = threading.Thread(target=self.start_recording_thread)
         start_recording_thread.start()
 
-    def configure_recordings_file(self) -> str:
+    def stop_recording(self) -> None:
+        self.is_recording = False
+
+    def configure_recordings_file(self, file_name : str) -> str:
         # if the path /recordings does not exist, create it
         i: int = 0
         if not os.path.exists("recordings"):
             os.makedirs("recordings")
-        filename_taken: bool = True
-        while filename_taken:
-            # check if the path fir exists
-            if not os.path.exists("recordings/recording" + str(i)):
-                filename_taken = False
-            else:
-                i += 1
-        print("recordings/recording" + str(i))
-        os.makedirs("recordings/recording" + str(i))
-        return "recordings/recording" + str(i) + "/"
+        print("recordings/" + file_name + "/Kinect")
+        os.makedirs("recordings/" + file_name + "/Kinect")
+        return "recordings/"+ file_name + "/Kinect/"
     
     def save_image(self, image: np.ndarray, timestamp: str) -> None:
         # file_time = timestamp.strftime("%Y%m%d_%H%M%S")
@@ -208,7 +207,7 @@ class KinectHub:
             cv2.imshow("Recording", image)
 
             # Press q to exit
-            if cv2.waitKey(1) == ord('q'):
+            if cv2.waitKey(1) == ord('q') or not self.is_recording:
                 break
         # save a text file that has only the timestamp of the start of the recording
         with open(self.FILEPATH + "start_timestamp.txt", "w") as file:
