@@ -218,7 +218,7 @@ class GlassesHub:
             return
         recordings = await self.g3.recordings._get_children()
         recordings_widget = QWidget()
-        recordings_hub: RecordingsHub = RecordingsHub(recordings_widget, recordings)
+        recordings_hub: RecordingsHub = RecordingsHub(recordings_widget, recordings, self.g3)
         
 
     def define_ui(self):
