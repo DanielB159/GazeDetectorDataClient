@@ -8,6 +8,7 @@ from imports import os
 from imports import cv2
 from g3pylib.recordings.recording import Recording
 from recordings_hub import RecordingsHub
+from recordings_hub import download_recording_thread
 
 import threading
 import logging
