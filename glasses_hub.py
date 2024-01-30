@@ -6,6 +6,9 @@ from imports import g3pylib
 from g3pylib import Glasses3
 from imports import os
 from imports import cv2
+from g3pylib.recordings.recording import Recording
+from recordings_hub import RecordingsHub
+from recordings_hub import download_recording_thread
 
 import threading
 import logging
@@ -39,8 +42,8 @@ class GlassesHub:
 
     def __init__(self, glasses_hub_widget: QWidget):
         if not self._is_initialized:
-            self._is_initialized: bool = True
             self.glasses_widget: QWidget = glasses_hub_widget
+            self._is_initialized: bool = True
             self.battery_level: float = 0
             self.storage_free: int = 0
             self.storage_size: int = 1
@@ -209,6 +212,16 @@ class GlassesHub:
         except Exception as e:
             logging.error(str(e))
 
+    async def storage_recordings(self):
+        """Function to show all recordings on the glasses"""
+        if not self.isConnected:
+            logging.error("Not connected to glasses")
+            return
+        recordings = await self.g3.recordings._get_children()
+        recordings_widget = QWidget()
+        recordings_hub: RecordingsHub = RecordingsHub(recordings_widget, recordings, self.g3)
+        
+
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
         self.glasses_widget.setWindowTitle("Glasses Hub")
@@ -291,6 +304,14 @@ class GlassesHub:
             "SD card free space left: "
             + str(self.storage_free / self.storage_size)
             + "%"
+        )
+
+        # define button to show all recordings
+        self.show_recordings_button: QPushButton = QPushButton(self.glasses_widget)
+        self.show_recordings_button.setText("Storage recordings")
+        self.show_recordings_button.move(50, 400)
+        self.show_recordings_button.clicked.connect(
+            lambda: asyncio.ensure_future(self.storage_recordings())
         )
 
 
