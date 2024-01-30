@@ -9,6 +9,7 @@ from imports import cv2
 
 import threading
 import logging
+from asgiref.sync import async_to_sync
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,13 +49,26 @@ class GlassesHub:
             self.define_ui()
             self.previous_recording = None  # TODO: ADD TYPING
             self.g3: Glasses3 = None
-            self.isConnected: bool = False
+            #self.isConnected: bool = False // just check if self.g3 == None
             self.glasses_widget.show()
             #asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
+    @async_to_sync
+    async def is_recording(self):
+        return await self.g3.recorder.get_uuid() == None
+
     def is_able_to_record(self):
-        # TODO: dummy function
-        return True
+        if self.g3 == None: # check if is even connected
+            return False
+        try:
+            # check if glasses are currently recording
+            print("checking")
+            is_recording = False    # TODO: make it actually check
+            #is_recording = self.is_recording()
+            #print(is_recording)
+        except:
+            return False
+        return not is_recording
 
     def closeEvent(self, event):
         """Function to handle the close event"""
@@ -66,114 +80,149 @@ class GlassesHub:
     def __del__(self):
         logging.info("Glasseshub instance destroyed.")
         # in case a recording is in progress, close it
-        asyncio.ensure_future(self.stop_recording())
-        asyncio.ensure_future(self.disconnect())
+        run_async_thread(self._stop_recording)
+        run_async_thread(self.disconnect)
+        # how do i force this to remain open?
 
     async def connect(self):
         """Function to connect machine to glasses"""
-        if self.isConnected:
-            logging.info("Already connected.")
+        if not self.g3 == None:
+            logging.info("Already Connected, reconnecting...")
+        try:
+            self.g3 = await g3pylib.connect_to_glasses.with_hostname(
+                os.environ["G3_HOSTNAME"]
+            )
+        except:
+            logging.info("Connection failed.")
             return
-        self.g3 = await g3pylib.connect_to_glasses.with_hostname(
-            os.environ["G3_HOSTNAME"]
-        )
-        self.isConnected = True
         self.connection_label.setText(f"Status: Connected to {self.g3.rtsp_url}")
 
     async def disconnect(self):
-        await self.g3.close()
-        self.isConnected = False
+        if not self.g3 == None:
+            logging.info("Not connected.")
+        try:
+            await self.g3.close()
+            self.g3 = None
+        except:
+            logging.info("Closing connection failed.")
         self.connection_label.setText("Status: Not Connected")
 
     async def calibrate(self):
-        out = await self.g3.calibrate.run()
+        if self.g3 == None:
+            logging("Not connected.")
+            return
+        try:
+            out = await self.g3.calibrate.run()
+        except:
+            logging.info("Unable to reach Glasses3.")
         if out:
             print("Calibration successful.")
         else:
             print("Calibration failed.")
 
     async def _start_recording(self):
-        if await self.g3.recorder.get_uuid() != None:
-            logging.info(
-                "Warning: Recording ongoing, can't start new recording. Make sure to stop recording."
-            )
+        if self.g3 == None:
+            logging("Glasses_Hub: Not Connected.")
             return
-        async with self.g3.recordings.keep_updated_in_context():
-            await self.g3.recorder.start()
-            logging.info("Creating new recording")
-            # now is the time to set folder and names (not uuid)
-            # self.recording_uuid = await self.g3.recorder.get_uuid()
-            # self.g3.recorder.set_visible_name(str)
+        try:
+            if await self.g3.recorder.get_uuid() != None:
+                logging.info(
+                    "Warning: Recording ongoing, can't start new recording. Make sure to stop recording."
+                )
+                return
+            async with self.g3.recordings.keep_updated_in_context():
+                await self.g3.recorder.start()
+                logging.info("Creating new recording")
+        except:
+            logging.info("Glasses_Hub: _start_recording() Error: Unable to reach Glasses3")
     
     def start_recording(self, recording_folder_name : str):
         self.recording_folder_name = recording_folder_name
         asyncio.ensure_future(self._start_recording())
 
     async def _stop_recording(self):
-        if await self.g3.recorder.get_uuid() == None:
-            logging.info("Warning: Recording not ongoing, nothing to stop.")
+        if self.g3 == None:
+            logging.info("Not connected.")
             return
-        async with self.g3.recordings.keep_updated_in_context():
-            recording_uuid = await self.g3.recorder.get_uuid()
-            await self.g3.recorder.stop()  # what if failed?
-            logging.info("Recording stopped")
-            # get recording now
-            self.previous_recording = self.g3.recordings.get_recording(
-                recording_uuid
-            )  # must it be updated?
-            logging.info(await self.previous_recording.get_http_path())
-            # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
+        try:
+            if await self.g3.recorder.get_uuid() == None:
+                logging.info("Warning: Recording not ongoing, nothing to stop.")
+                return
+            async with self.g3.recordings.keep_updated_in_context():
+                recording_uuid = await self.g3.recorder.get_uuid()
+                await self.g3.recorder.stop()  # what if failed?
+                logging.info("Recording stopped")
+                # get recording now
+                self.previous_recording = self.g3.recordings.get_recording(
+                    recording_uuid
+                )  # must it be updated?
+                logging.info(await self.previous_recording.get_http_path())
+                # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
+        except:
+            logging.info("Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3")
 
     def stop_recording(self):
         asyncio.ensure_future(self._stop_recording())
 
     async def _cancel_recording(self):
-        if await self.g3.recorder.get_uuid() == None:
-            logging.info("Warning: Recording not ongoing, nothing to cancel.")
+        if self.g3 == None:
+            logging.info("Not connected.")
             return
-        async with self.g3.recordings.keep_updated_in_context():
-            await self.g3.recorder.cancel()  # what if failed?
-            logging.info("Recording cancelled")
+        try:
+            if await self.g3.recorder.get_uuid() == None:
+                logging.info("Warning: Recording not ongoing, nothing to cancel.")
+                return
+            async with self.g3.recordings.keep_updated_in_context():
+                await self.g3.recorder.cancel()  # what if failed?
+                logging.info("Recording cancelled")
+        except:
+            logging.info("Glasses_Hub: _cancel_recording() Error: Unable to reach Glasses3")
 
     def cancel_recording(self):
         asyncio.ensure_future(self._cancel_recording())
 
     async def get_sd_and_battery_info(self):
-        # define the requests
-        req_battery = self.g3._connection.generate_get_request("//system/battery.level")
-        req_storage_size = self.g3._connection.generate_get_request(
-            "//system/storage.size"
-        )
-        req_storage_free = self.g3._connection.generate_get_request(
-            "//system/storage.free"
-        )
-
-        # request the data
-        res_battery = await self.g3._connection.require(req_battery)
-        if not res_battery:
-            logging.error("Error getting battery level")
+        if self.g3 == None:
+            logging.info("Not Connected.")
             return
-        self.battery_level = float(res_battery)
-        self.battery_label.setText("Battery: {:.2f}%".format(self.battery_level * 100))
-        # or
-        # self.battery_label.setText(f"Battery: {self.battery_level * 100:.2f}%")
-        res_storage_size = await self.g3._connection.require(req_storage_size)
-        if not res_storage_size:
-            logging.error("Error getting storage size")
-            return
-        self.storage_size = int(res_storage_size)
-        res_storage_free = await self.g3._connection.require(req_storage_free)
-        if not res_storage_free:
-            logging.error("Error getting storage free")
-            return
-        self.storage_free = int(res_storage_free)
-        self.sd_card_label.setText(
-            "SD card free space left: {:.2f}%".format(
-                (self.storage_free / self.storage_size) * 100
+        try:
+            # define the requests
+            req_battery = self.g3._connection.generate_get_request("//system/battery.level")
+            req_storage_size = self.g3._connection.generate_get_request(
+                "//system/storage.size"
             )
-        )
+            req_storage_free = self.g3._connection.generate_get_request(
+                "//system/storage.free"
+            )
 
-        # logging.info(sd_info)
+            # request the data
+            res_battery = await self.g3._connection.require(req_battery)
+            if not res_battery:
+                logging.error("Error getting battery level")
+                return
+            self.battery_level = float(res_battery)
+            self.battery_label.setText("Battery: {:.2f}%".format(self.battery_level * 100))
+            # or
+            # self.battery_label.setText(f"Battery: {self.battery_level * 100:.2f}%")
+            res_storage_size = await self.g3._connection.require(req_storage_size)
+            if not res_storage_size:
+                logging.error("Error getting storage size")
+                return
+            self.storage_size = int(res_storage_size)
+            res_storage_free = await self.g3._connection.require(req_storage_free)
+            if not res_storage_free:
+                logging.error("Error getting storage free")
+                return
+            self.storage_free = int(res_storage_free)
+            self.sd_card_label.setText(
+                "SD card free space left: {:.2f}%".format(
+                    (self.storage_free / self.storage_size) * 100
+                )
+            )
+
+            # logging.info(sd_info) 
+        except:
+            logging.info("Glasses_Hub: get_sd_and_battery_info() Error: Unable to reach Glasses3")
 
     async def lv_start(self):
         try:
