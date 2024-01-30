@@ -67,7 +67,22 @@ def download_recording_thread(rec_name: str, http_url, directory):
         print("IMU data downloaded.")
     else:
         print("IMU data not downloaded.")
+    # get the meta data of the recording
+    r_meta_data = requests.get(http_url + f"/recordings/{rec_name}", stream=True)
+    if r_meta_data.status_code == 200:
+        # read the meta data as a json and extract the key "created"
+        meta_data = r_meta_data.json()
+        created = meta_data["created"]
+        # convert the created string to a datetime object
+        created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%fZ")
+        # save the creation date of the recording to a file
+        with open(os.path.join(directory, "start_timestamp.txt"), "w") as f:
+            f.write(str(created))
+        print("Meta data downloaded.")
+    else:
+        print("Meta data not downloaded.")
 
+    print("All files downloaded.")
     
 
 class RecordingsHub:
