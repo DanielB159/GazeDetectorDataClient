@@ -12,7 +12,8 @@ from recordings_hub import download_recording_thread
 
 import threading
 import logging
-from asgiref.sync import async_to_sync
+#from asgiref.sync import async_to_sync
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,7 +57,7 @@ class GlassesHub:
             self.glasses_widget.show()
             #asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
-    @async_to_sync
+#    @async_to_sync
     async def is_recording(self):
         return await self.g3.recorder.get_uuid() == None
 
@@ -140,6 +141,7 @@ class GlassesHub:
             logging.info("Glasses_Hub: _start_recording() Error: Unable to reach Glasses3")
     
     def start_recording(self, recording_folder_name : str):
+        # TODO: what if overrides??? make sure it doesnt if self.recording_folder_name is already set, and make it None otherwise?   
         self.recording_folder_name = recording_folder_name
         asyncio.ensure_future(self._start_recording())
 
@@ -160,6 +162,11 @@ class GlassesHub:
                     recording_uuid
                 )  # must it be updated?
                 logging.info(await self.previous_recording.get_http_path())
+
+                #assuming dir doesnt exist!
+                os.makedirs("./recordings/" + self.recording_folder_name + "/Glasses3")
+                download_recording_thread(self.previous_recording.uuid, self.g3._http_url, "./recordings/" + self.recording_folder_name + "/Glasses3")
+
                 # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
         except:
             logging.info("Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3")
@@ -278,7 +285,7 @@ class GlassesHub:
 
     async def storage_recordings(self):
         """Function to show all recordings on the glasses"""
-        if not self.isConnected:
+        if self.g3 == None:
             logging.error("Not connected to glasses")
             return
         recordings = await self.g3.recordings._get_children()
@@ -329,7 +336,7 @@ class GlassesHub:
         self.record_start_button.setText("Start Recording")
         self.record_start_button.move(50, 150)
         self.record_start_button.clicked.connect(
-            lambda: self.start_recording("solo_recording")
+            lambda: self.start_recording("solo_recording: " + '_'.join(str(datetime.now()).split(':')))
         )
 
         self.record_stop_button: QPushButton = QPushButton(self.glasses_widget)
