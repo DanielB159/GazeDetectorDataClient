@@ -168,7 +168,8 @@ class GlassesHub:
                 download_recording_thread(self.previous_recording.uuid, self.g3._http_url, "./recordings/" + self.recording_folder_name + "/Glasses3")
 
                 # at this point i might want to try and downlod it from the glasses. or perhaps just name it to use later
-        except:
+        except Exception as e:
+            logging.info(e)
             logging.info("Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3")
 
     def stop_recording(self):
@@ -336,7 +337,7 @@ class GlassesHub:
         self.record_start_button.setText("Start Recording")
         self.record_start_button.move(50, 150)
         self.record_start_button.clicked.connect(
-            lambda: self.start_recording("solo_recording: " + '_'.join(str(datetime.now()).split(':')))
+            lambda: self.start_recording("solo_recording_" + '_'.join(str(datetime.now()).split(':')))
         )
 
         self.record_stop_button: QPushButton = QPushButton(self.glasses_widget)
