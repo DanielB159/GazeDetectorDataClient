@@ -55,7 +55,7 @@ class GlassesHub:
             self.g3: Glasses3 = None
             #self.isConnected: bool = False // just check if self.g3 == None
             self.glasses_widget.show()
-            #asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
+            asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
 #    @async_to_sync
     async def is_recording(self):
