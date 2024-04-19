@@ -1,3 +1,6 @@
 [submodule "g3pylib"]
 	path = g3pylib
 	url = https://github.com/tobiipro/g3pylib.git
+[submodule "pyKinectAzure"]
+	path = pyKinectAzure
+	url = https://github.com/ibaiGorordo/pyKinectAzure.git
