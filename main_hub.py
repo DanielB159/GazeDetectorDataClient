@@ -9,15 +9,19 @@ from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QLabel
 from qasync import QEventLoop
 
+import recording_manager
+
+record_manager = recording_manager.RecordingManager()
+
 glasses_hub: GlassesHub = None
 kinect_hub: KinectHub = None
-is_recording: bool = False
 
 def start_glasses_hub(main_widget: QWidget) -> None:
     """Function opening the Glasses Hub"""
     global glasses_hub
     glasses_widget = QWidget()
-    glasses_hub = GlassesHub(glasses_widget)
+    glasses_hub = GlassesHub(glasses_widget, record_manager)
+    record_manager.glasses_hub = glasses_hub
     print(glasses_hub)
 
 def start_kinect_hub(main_widget: QWidget) -> None:
@@ -25,38 +29,34 @@ def start_kinect_hub(main_widget: QWidget) -> None:
     global kinect_hub
     kinect_hub_widget = QWidget()
     kinect_hub = KinectHub(kinect_hub_widget)
+    record_manager.kinect_hub = kinect_hub
 
 def start_recording() -> None:
     if glasses_hub == None or kinect_hub == None:
         print("Error: A hub is not currently running.")
         # note: if one was opened then closed it still exists, deal with it in safety
         return
-    if not glasses_hub.is_able_to_record() or not kinect_hub.is_able_to_record():
+    if not record_manager.is_glasses_available() or not record_manager.is_kinect_available():
         print("Error: recording currently unavailable.")
         return
     
-    # what must be saved for me to know this is happening?
     recording_folder_name = '_'.join(str(datetime.now()).split(':'))
     kinect_hub.start_recording(recording_folder_name)
     glasses_hub.start_recording(recording_folder_name)
-    global is_recording
-    is_recording = True
+
+    record_manager.glasses_is_recording = True
+    record_manager.kinect_is_recording = True
     
 def end_recording() -> None:
-    # check if is recording
-    global is_recording
-    if is_recording:
-        kinect_hub.stop_recording()
-        glasses_hub.stop_recording()
-    is_recording = False
+    # no need to check, will stop and update if possible
+    kinect_hub.stop_recording() # make sure is self updating!
+    glasses_hub.stop_recording()
     return
 
 def cancel_recording() -> None:
-    global is_recording
-    if is_recording:
-        kinect_hub.stop_recording()    #no way to cancel for now
-        glasses_hub.cancel_recording()
-    is_recording = False
+    # no need to check, will stop and update if possible
+    kinect_hub.stop_recording()    #no way to cancel for now
+    glasses_hub.cancel_recording()
     return
 
 def define_main_ui(main_widget: QWidget) -> None:

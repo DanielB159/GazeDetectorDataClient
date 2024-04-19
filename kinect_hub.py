@@ -7,7 +7,7 @@ import threading
 import time
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import asyncio
 import numpy as np
 from pykinect_azure.k4arecord import _k4arecord
@@ -294,7 +294,6 @@ class KinectHub:
 
                 # Start device
                 self.device.start(self.device_config, self.RECORD, self.FILEPATH)
-                self.start_timestamp = datetime.utcnow() + timedelta(hours=2)
             else:
                 self.device.start(self.device_config)
         except SystemExit as exception:
