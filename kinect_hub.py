@@ -17,6 +17,7 @@ from pykinect_azure.k4a import Device, Capture, Image, Configuration, ImuSample
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit
 from qasync import QEventLoop
+from pyKinectAzure.examples.utils import Open3dVisualizer
 
 class KinectHub:
     """Class representing the Kinect Hub"""
@@ -137,23 +138,6 @@ class KinectHub:
         cv2.destroyWindow("Playback")
 
 
-    # def capture_image(self):
-    #     """Function to capture an image from the kinect camera"""
-    #     self.configure_kinect()
-    #     if self.device is None:
-    #         return
-    
-    # def capture_image_thread(self):
-    #     """Function to capture an image from the kinect camera"""
-    #     # Get a capture from the device
-    #     capture: Capture = self.device.update()
-    #     ret: bool
-    #     raw_color_image: Image
-    #     # Get the color image from the capture
-    #     ret, raw_color_image = capture.get_color_image()
-
-    #     # if the capture did not succeed, then continue
-
     def start_recording(self, recording_folder_name) -> None:
         """Function to start recording the kinect camera"""
         if self.is_live_view:
@@ -242,6 +226,9 @@ class KinectHub:
         """Function to start the live view"""
         cv2.namedWindow("Live View Depth", cv2.WINDOW_NORMAL)
         # sys.stdout = open("output.txt", "w")
+        # Initialize the Open3d visualizer
+        open3dVisualizer = Open3dVisualizer()
+        
         while True:
             # Get a capture from the device
             capture: Capture = device.update()
@@ -251,8 +238,16 @@ class KinectHub:
             # ret, depth_image = capture.get_ir_image()
             # Get the color depth image from the capture
             ret, depth_image = capture.get_colored_depth_image()
-            if not ret:
+            # Get the 3D point cloud
+            ret_point, points = capture.get_pointcloud()
+            if not ret or not ret_point:
                 continue
+
+
+            open3dVisualizer(points, depth_image)
+
+            # Get the 3D point cloud
+		    # ret_point, points = capture.get_transformed_pointcloud()
             # ret, smooth_depth_image = capture.get_smooth_colored_depth_image(maximum_hole_size)
             # if not ret:
             #     continue
@@ -261,12 +256,13 @@ class KinectHub:
             # comparison_image = cv2.putText(comparison_image, 'Original', (180, 50) , cv2.FONT_HERSHEY_SIMPLEX ,1.5, (255,255,255), 3, cv2.LINE_AA) 
             # comparison_image = cv2.putText(comparison_image, 'Smoothed', (670, 50) , cv2.FONT_HERSHEY_SIMPLEX ,1.5, (255,255,255), 3, cv2.LINE_AA)
 
-            image : np.ndarray = cv2.putText(depth_image, "Live View Depth", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-            cv2.imshow("Live View Depth", image)
+            # image : np.ndarray = cv2.putText(depth_image, "Live View Depth", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            cv2.imshow("Live View Depth", depth_image)
 
             # Press q to exit
             if cv2.waitKey(1) == ord('q'):
                 cv2.destroyWindow("Live View Depth")
+                open3dVisualizer.vis.destroy_window()
                 break
         self.stop_kinect()
         self.is_live_view = False
@@ -392,8 +388,8 @@ class KinectHub:
     def get_low_res_configuration(self) -> Configuration:
         config: Configuration = pykinect.default_configuration
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
-        # config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_OFF
-        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
+        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_OFF
+        # config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
         config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
         return config
