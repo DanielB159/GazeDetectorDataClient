@@ -17,6 +17,7 @@ from pykinect_azure.k4a import Device, Capture, Image, Configuration, ImuSample
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit
 from qasync import QEventLoop
+from pyKinectAzure.examples.utils import Open3dVisualizer
 
 class KinectHub:
     """Class representing the Kinect Hub"""
@@ -60,6 +61,10 @@ class KinectHub:
         live_view_btn.setText("Live View")
         live_view_btn.move(200, 100)
         live_view_btn.clicked.connect(self.live_view)
+        live_view_depth_btn : QPushButton = QPushButton(self.kinect_hub_widget)
+        live_view_depth_btn.setText("Live View Depth")
+        live_view_depth_btn.move(350, 100)
+        live_view_depth_btn.clicked.connect(self.live_view_depth)
         start_rec_btn : QPushButton = QPushButton(self.kinect_hub_widget)
         start_rec_btn.setText("Start recording")
         start_rec_btn.move(200, 150)
@@ -99,7 +104,7 @@ class KinectHub:
         playback: Playback = pykinect.start_playback(path)
         # playback_config = playback.get_record_configuration()
         # print(playback_config)
-        print("the playback length is " + str(playback.get_recording_length()) + " microseconds")
+        # print("the playback length is " + str(playback.get_recording_length()) + " microseconds")
         cv2.namedWindow('Playback', cv2.WINDOW_NORMAL)
         i = 0
         while True:
@@ -132,23 +137,6 @@ class KinectHub:
                 break
         cv2.destroyWindow("Playback")
 
-
-    # def capture_image(self):
-    #     """Function to capture an image from the kinect camera"""
-    #     self.configure_kinect()
-    #     if self.device is None:
-    #         return
-    
-    # def capture_image_thread(self):
-    #     """Function to capture an image from the kinect camera"""
-    #     # Get a capture from the device
-    #     capture: Capture = self.device.update()
-    #     ret: bool
-    #     raw_color_image: Image
-    #     # Get the color image from the capture
-    #     ret, raw_color_image = capture.get_color_image()
-
-    #     # if the capture did not succeed, then continue
 
     def start_recording(self, recording_folder_name) -> None:
         """Function to start recording the kinect camera"""
@@ -218,6 +206,69 @@ class KinectHub:
     
 
 
+    def live_view_depth(self) -> None:
+        """Function to open the live view in depth mode in the kinect camera in a seperate thread"""
+        if self.is_recording:
+            print("not able to start live view when recording")
+            return
+        self.configure_camera(True)
+        if self.device is None:
+            return
+        # Start the live view in a seperate thread
+        self.is_live_view = True
+        live_view_thread: threading.Thread = threading.Thread(target=self.live_view_depth_thread, args=(self.device,))
+        live_view_thread.start()
+        # Stop the kinect
+        # self.stop_kinect()
+
+
+    def live_view_depth_thread(self, device: Device) -> None:
+        """Function to start the live view"""
+        cv2.namedWindow("Live View Depth", cv2.WINDOW_NORMAL)
+        # sys.stdout = open("output.txt", "w")
+        # Initialize the Open3d visualizer
+        open3dVisualizer = Open3dVisualizer()
+        
+        while True:
+            # Get a capture from the device
+            capture: Capture = device.update()
+            ret: bool
+            depth_image: Image
+            # Get the color image from the capture
+            # ret, depth_image = capture.get_ir_image()
+            # Get the color depth image from the capture
+            ret, depth_image = capture.get_colored_depth_image()
+            # Get the 3D point cloud
+            ret_point, points = capture.get_pointcloud()
+            if not ret or not ret_point:
+                continue
+
+
+            open3dVisualizer(points, depth_image)
+
+            # Get the 3D point cloud
+		    # ret_point, points = capture.get_transformed_pointcloud()
+            # ret, smooth_depth_image = capture.get_smooth_colored_depth_image(maximum_hole_size)
+            # if not ret:
+            #     continue
+            # Concatenate images for comparison
+            # comparison_image = np.concatenate((depth_image, smooth_depth_image), axis=1)
+            # comparison_image = cv2.putText(comparison_image, 'Original', (180, 50) , cv2.FONT_HERSHEY_SIMPLEX ,1.5, (255,255,255), 3, cv2.LINE_AA) 
+            # comparison_image = cv2.putText(comparison_image, 'Smoothed', (670, 50) , cv2.FONT_HERSHEY_SIMPLEX ,1.5, (255,255,255), 3, cv2.LINE_AA)
+
+            # image : np.ndarray = cv2.putText(depth_image, "Live View Depth", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            cv2.imshow("Live View Depth", depth_image)
+
+            # Press q to exit
+            if cv2.waitKey(1) == ord('q'):
+                cv2.destroyWindow("Live View Depth")
+                open3dVisualizer.vis.destroy_window()
+                break
+        self.stop_kinect()
+        self.is_live_view = False
+        
+
+
 
 
     def live_view(self) -> None:
@@ -225,14 +276,13 @@ class KinectHub:
         if self.is_recording:
             print("not able to start live view when recording")
             return
-        self.configure_camera()
+        self.configure_camera(True)
         if self.device is None:
             return
         # Start the live view in a seperate thread
         self.is_live_view = True
         live_view_thread: threading.Thread = threading.Thread(target=self.live_view_thread, args=(self.device,))
         live_view_thread.start()
-        # Wait for the thread to finish
         # Stop the kinect
         # self.stop_kinect()
         
@@ -244,8 +294,6 @@ class KinectHub:
         while True:
             # Get a capture from the device
             capture: Capture = device.update()
-            imu: ImuSample = ImuSample(device.get_imu_sample())
-            print(imu.get_gyro_time())
             ret: bool
             raw_color_image: Image
             # Get the color image from the capture
@@ -277,14 +325,8 @@ class KinectHub:
         self.stop_kinect()
         self.is_live_view = False
         
-        # print 100 spaces
-        # for i in range(100):
-        #     print(" ")
-        # set the output of prints to be to the console
-        # sys.stdout = sys.__stdout__
 
-
-    def configure_camera(self) -> None:
+    def configure_camera(self, is_live_view = False) -> None:
         """Function to configure the camera"""
         pykinect.initialize_libraries()
         try:
@@ -293,7 +335,11 @@ class KinectHub:
                 self.device = Device(self.DEVICE_INDEX)
 
                 # Start device
-                self.device.start(self.device_config, self.RECORD, self.FILEPATH)
+                if is_live_view:
+                    self.device.start(self.device_config)
+                else:
+                    self.device.start(self.device_config, self.RECORD, self.FILEPATH)
+                self.start_timestamp = datetime.utcnow() + timedelta(hours=2)
             else:
                 self.device.start(self.device_config)
         except SystemExit as exception:
@@ -336,11 +382,14 @@ class KinectHub:
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
         config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_NV12
+        config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
         return config
 
     def get_low_res_configuration(self) -> Configuration:
         config: Configuration = pykinect.default_configuration
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
-        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
+        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_OFF
+        # config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
+        config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
         return config
