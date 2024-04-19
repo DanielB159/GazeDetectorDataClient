@@ -28,7 +28,7 @@ def start_kinect_hub(main_widget: QWidget) -> None:
     """Function opening the Kinect Hub"""
     global kinect_hub
     kinect_hub_widget = QWidget()
-    kinect_hub = KinectHub(kinect_hub_widget)
+    kinect_hub = KinectHub(kinect_hub_widget, record_manager)
     record_manager.kinect_hub = kinect_hub
 
 def start_recording() -> None:

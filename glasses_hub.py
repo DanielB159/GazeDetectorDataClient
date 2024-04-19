@@ -15,7 +15,7 @@ import logging
 #from asgiref.sync import async_to_sync
 from datetime import datetime
 
-import recording_manager
+from imports import rec_manager
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,10 +44,10 @@ class GlassesHub:
             cls._instance = super(GlassesHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, glasses_hub_widget: QWidget, record_manager):
+    def __init__(self, glasses_hub_widget: QWidget, record_manager : rec_manager):
         if not self._is_initialized:
-            self.record_manager : recording_manager.RecordingManager = record_manager
-            if not recording_manager:
+            self.record_manager : rec_manager = record_manager
+            if not record_manager:
                 raise Exception("no recording manager provided")
             self.glasses_widget: QWidget = glasses_hub_widget
             self._is_initialized: bool = True

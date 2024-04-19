@@ -17,7 +17,8 @@ from pykinect_azure.k4a import Device, Capture, Image, Configuration, ImuSample
 from pykinect_azure.k4a._k4a import k4a_image_get_system_timestamp_nsec, k4a_image_get_device_timestamp_usec, k4a_image_get_timestamp_usec
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit
 from qasync import QEventLoop
-from pyKinectAzure.examples.utils import Open3dVisualizer
+
+from imports import rec_manager
 
 class KinectHub:
     """Class representing the Kinect Hub"""
@@ -30,8 +31,11 @@ class KinectHub:
             cls._instance = super(KinectHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, kinect_hub_widget: QWidget):
+    def __init__(self, kinect_hub_widget: QWidget, record_manager : rec_manager):
         if not self._is_initialized:
+            self.record_manager : rec_manager = record_manager
+            if not record_manager:
+                raise Exception("no recording manager provided")
             self.is_recording: bool = False
             self.is_live_view: bool = False
             self._is_initialized : bool = True
@@ -75,10 +79,6 @@ class KinectHub:
         playback_btn.clicked.connect(self.start_playback)
         input_playback_filepath: QLineEdit = QLineEdit(self.kinect_hub_widget)
         input_playback_filepath.move(200, 250)
-
-    def is_able_to_record(self):
-        # TODO: dummy function
-        return True
 
     def closeEvent(self, event) -> None:
         """Function to handle the close event"""
@@ -148,11 +148,13 @@ class KinectHub:
         if self.device is None:
             return
         self.is_recording = True
+        self.record_manager.kinect_is_recording = True
         start_recording_thread : threading.Thread = threading.Thread(target=self.start_recording_thread)
         start_recording_thread.start()
 
     def stop_recording(self) -> None:
         self.is_recording = False
+        self.record_manager.kinect_is_recording = False
 
     def configure_recordings_file(self, file_name : str) -> str:
         # if the path /recordings does not exist, create it
@@ -203,6 +205,7 @@ class KinectHub:
         cv2.destroyWindow("Recording")
         self.stop_kinect()
         self.is_recording = False
+        self.record_manager.kinect_is_recording = False
     
 
 
