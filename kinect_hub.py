@@ -227,24 +227,26 @@ class KinectHub:
         cv2.namedWindow("Live View Depth", cv2.WINDOW_NORMAL)
         # sys.stdout = open("output.txt", "w")
         # Initialize the Open3d visualizer
-        open3dVisualizer = Open3dVisualizer()
         
         while True:
             # Get a capture from the device
             capture: Capture = device.update()
             ret: bool
             depth_image: Image
+            color_image: Image
             # Get the color image from the capture
             # ret, depth_image = capture.get_ir_image()
             # Get the color depth image from the capture
-            ret, depth_image = capture.get_colored_depth_image()
+            ret, depth_image = capture.get_depth_image()
+
             # Get the 3D point cloud
-            ret_point, points = capture.get_pointcloud()
-            if not ret or not ret_point:
+            ret_color, color_image = capture.get_color_image()
+            if not ret or not ret_color:
                 continue
+            
 
+            # combined_image = cv2.addWeighted(color_image[:,:,:3], 0.7, depth_image, 0.3, 0)
 
-            open3dVisualizer(points, depth_image)
 
             # Get the 3D point cloud
 		    # ret_point, points = capture.get_transformed_pointcloud()
@@ -258,11 +260,11 @@ class KinectHub:
 
             # image : np.ndarray = cv2.putText(depth_image, "Live View Depth", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
             cv2.imshow("Live View Depth", depth_image)
-
+            print(depth_image.shape)
+            print(depth_image)
             # Press q to exit
             if cv2.waitKey(1) == ord('q'):
                 cv2.destroyWindow("Live View Depth")
-                open3dVisualizer.vis.destroy_window()
                 break
         self.stop_kinect()
         self.is_live_view = False
@@ -388,8 +390,8 @@ class KinectHub:
     def get_low_res_configuration(self) -> Configuration:
         config: Configuration = pykinect.default_configuration
         config.camera_fps = pykinect.K4A_FRAMES_PER_SECOND_30
-        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_OFF
-        # config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
+        # config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_OFF
+        config.color_resolution = pykinect.K4A_COLOR_RESOLUTION_720P
         config.color_format = pykinect.K4A_IMAGE_FORMAT_COLOR_MJPG
         config.depth_mode = pykinect.K4A_DEPTH_MODE_WFOV_2X2BINNED
         return config
