@@ -8,3 +8,4 @@ opencv-python
 pillow
 python-dotenv
 requests
+open3d
