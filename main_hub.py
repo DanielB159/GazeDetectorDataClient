@@ -4,23 +4,36 @@ from kinect_hub import KinectHub
 import sys
 import asyncio
 from datetime import datetime
+import gc
 
 # from imports import tk
 from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QLabel
+
 from qasync import QEventLoop
 
-import recording_manager
-
-record_manager = recording_manager.RecordingManager()
+from imports import rec_manager
+record_manager = rec_manager()
 
 glasses_hub: GlassesHub = None
 kinect_hub: KinectHub = None
+
+def close_glasses_hub(event) -> None:
+    """Function kills glasses_hub"""
+    global glasses_hub
+    glasses_hub.__del__()
+    glasses_hub = None
+    
+def close_kinect_hub(event) -> None:
+    """Function kills kinect_hub"""
+    global kinect_hub
+    kinect_hub.__del__()
+    kinect_hub = None
 
 def start_glasses_hub(main_widget: QWidget) -> None:
     """Function opening the Glasses Hub"""
     global glasses_hub
     glasses_widget = QWidget()
-    glasses_hub = GlassesHub(glasses_widget, record_manager)
+    glasses_hub = GlassesHub(glasses_widget, record_manager, close_glasses_hub)
     record_manager.glasses_hub = glasses_hub
     print(glasses_hub)
 
@@ -28,7 +41,7 @@ def start_kinect_hub(main_widget: QWidget) -> None:
     """Function opening the Kinect Hub"""
     global kinect_hub
     kinect_hub_widget = QWidget()
-    kinect_hub = KinectHub(kinect_hub_widget, record_manager)
+    kinect_hub = KinectHub(kinect_hub_widget, record_manager, close_kinect_hub)
     record_manager.kinect_hub = kinect_hub
 
 def start_recording() -> None:
@@ -116,4 +129,3 @@ def start_main_hub() -> None:
     # Show the main window
     main_widget.show()
     loop.run_forever()
-

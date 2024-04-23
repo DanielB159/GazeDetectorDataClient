@@ -1,5 +1,5 @@
-import glasses_hub
-import kinect_hub
+# import glasses_hub
+# import kinect_hub
 import asyncio
 
 class RecordingManager:
@@ -13,8 +13,8 @@ class RecordingManager:
 
     def __init__(self):
         if not self._is_initialized:
-            self.glasses_hub : glasses_hub.GlassesHub = None
-            self.kinect_hub : kinect_hub.KinectHub = None
+            # self.glasses_hub : glasses_hub.GlassesHub = None
+            # self.kinect_hub : kinect_hub.KinectHub = None
             self.glasses_is_connected = False
             self.glasses_is_recording = False
             self.kinect_is_recording = False

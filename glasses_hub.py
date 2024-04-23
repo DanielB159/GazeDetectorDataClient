@@ -44,11 +44,12 @@ class GlassesHub:
             cls._instance = super(GlassesHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, glasses_hub_widget: QWidget, record_manager : rec_manager):
+    def __init__(self, glasses_hub_widget: QWidget, record_manager : rec_manager, close_function):
         if not self._is_initialized:
             self.record_manager : rec_manager = record_manager
             if not record_manager:
-                raise Exception("no recording manager provided")
+                raise Exception("no recording manager provided") # unnecessary check
+            self.close_function = close_function
             self.glasses_widget: QWidget = glasses_hub_widget
             self._is_initialized: bool = True
             self.battery_level: float = 0
@@ -76,18 +77,13 @@ class GlassesHub:
     def update_recording_state(self):
         asyncio.ensure_future(self._update_recording_state())
 
-    def closeEvent(self, event):
-        """Function to handle the close event"""
-        logging.info("Glasseshub window closed.")
+    def __del__(self):
+        # in case a recording is in progress, close it
         self._instance = None
         self._is_initialized = False
-        self.__del__()
-
-    def __del__(self):
+        asyncio.ensure_future(self._stop_recording())
+        asyncio.ensure_future(self.disconnect())
         logging.info("Glasseshub instance destroyed.")
-        # in case a recording is in progress, close it
-        run_async_thread(self._stop_recording)
-        run_async_thread(self.disconnect)
         # how do i force this to remain open?
 
     async def connect(self):
@@ -305,7 +301,7 @@ class GlassesHub:
         """Function defining the UI of the Glasses Hub"""
         self.glasses_widget.setWindowTitle("Glasses Hub")
         self.glasses_widget.setGeometry(500, 500, 500, 500)
-        self.glasses_widget.closeEvent = self.closeEvent
+        self.glasses_widget.closeEvent = self.close_function
 
         self.connection_label: QLabel = QLabel(self.glasses_widget)
         self.connection_label.resize(1000, 20)

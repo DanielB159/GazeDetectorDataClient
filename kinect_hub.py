@@ -31,11 +31,12 @@ class KinectHub:
             cls._instance = super(KinectHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, kinect_hub_widget: QWidget, record_manager : rec_manager):
+    def __init__(self, kinect_hub_widget: QWidget, record_manager : rec_manager, close_function):
         if not self._is_initialized:
             self.record_manager : rec_manager = record_manager
             if not record_manager:
                 raise Exception("no recording manager provided")
+            self.close_function = close_function
             self.is_recording: bool = False
             self.is_live_view: bool = False
             self._is_initialized : bool = True
@@ -56,7 +57,7 @@ class KinectHub:
         """Function defining the UI of the Kinect Hub"""
         self.kinect_hub_widget.setWindowTitle("Kinect Hub")
         self.kinect_hub_widget.setGeometry(500, 500, 500, 500)
-        self.kinect_hub_widget.closeEvent = self.closeEvent
+        self.kinect_hub_widget.closeEvent = self.close_function
         kinect_hub_title = QLabel(self.kinect_hub_widget)
         kinect_hub_title.setText("Kinect Hub")
         # enlarge the label
@@ -72,7 +73,7 @@ class KinectHub:
         start_rec_btn : QPushButton = QPushButton(self.kinect_hub_widget)
         start_rec_btn.setText("Start recording")
         start_rec_btn.move(200, 150)
-        start_rec_btn.clicked.connect(self.start_recording)
+        start_rec_btn.clicked.connect(lambda: self.start_recording(' '.join(str(datetime.utcnow()).split(':'))))
         playback_btn: QPushButton = QPushButton(self.kinect_hub_widget)
         playback_btn.setText("Playback")
         playback_btn.move(200, 200)
@@ -80,12 +81,11 @@ class KinectHub:
         input_playback_filepath: QLineEdit = QLineEdit(self.kinect_hub_widget)
         input_playback_filepath.move(200, 250)
 
-    def closeEvent(self, event) -> None:
-        """Function to handle the close event"""
+    def __del__(self):
         self._instance = None
         self._is_initialized = False
-        del self
-    
+        print("Kinect hub instance destroyed.")
+
     def start_playback(self) -> None:
         input_line: QLineEdit = self.kinect_hub_widget.findChild(QLineEdit)
         # check if the input line containts a valid path to an .mkf file
@@ -342,7 +342,7 @@ class KinectHub:
                     self.device.start(self.device_config)
                 else:
                     self.device.start(self.device_config, self.RECORD, self.FILEPATH)
-                self.start_timestamp = datetime.utcnow() + timedelta(hours=2)
+                self.start_timestamp = datetime.utcnow()
             else:
                 self.device.start(self.device_config)
         except SystemExit as exception:
