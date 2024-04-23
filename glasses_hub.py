@@ -15,6 +15,8 @@ import logging
 #from asgiref.sync import async_to_sync
 from datetime import datetime
 
+from imports import rec_manager
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -42,8 +44,12 @@ class GlassesHub:
             cls._instance = super(GlassesHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, glasses_hub_widget: QWidget):
+    def __init__(self, glasses_hub_widget: QWidget, record_manager : rec_manager, close_function):
         if not self._is_initialized:
+            self.record_manager : rec_manager = record_manager
+            if not record_manager:
+                raise Exception("no recording manager provided") # unnecessary check
+            self.close_function = close_function
             self.glasses_widget: QWidget = glasses_hub_widget
             self._is_initialized: bool = True
             self.battery_level: float = 0
@@ -57,35 +63,27 @@ class GlassesHub:
             self.glasses_widget.show()
             asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
-#    @async_to_sync
-    async def is_recording(self):
-        return await self.g3.recorder.get_uuid() == None
-
-    def is_able_to_record(self):
-        if self.g3 == None: # check if is even connected
-            return False
-        try:
-            # check if glasses are currently recording
-            print("checking")
-            is_recording = False    # TODO: make it actually check
-            #is_recording = self.is_recording()
-            #print(is_recording)
-        except:
-            return False
-        return not is_recording
-
-    def closeEvent(self, event):
-        """Function to handle the close event"""
-        logging.info("Glasseshub window closed.")
-        self._instance = None
-        self._is_initialized = False
-        self.__del__()
+    async def _update_recording_state(self):
+        # what if glasses is not connected
+        if self.g3 == None:
+            self.record_manager.glasses_is_connected = False
+            self.record_manager.glasses_is_recording = False
+            return
+        print("here")
+        self.record_manager.glasses_is_connected = True
+        state = await self.g3.recorder.get_uuid() != None
+        self.record_manager.glasses_is_recording = state
+    
+    def update_recording_state(self):
+        asyncio.ensure_future(self._update_recording_state())
 
     def __del__(self):
-        logging.info("Glasseshub instance destroyed.")
         # in case a recording is in progress, close it
-        run_async_thread(self._stop_recording)
-        run_async_thread(self.disconnect)
+        self._instance = None
+        self._is_initialized = False
+        asyncio.ensure_future(self._stop_recording())
+        asyncio.ensure_future(self.disconnect())
+        logging.info("Glasseshub instance destroyed.")
         # how do i force this to remain open?
 
     async def connect(self):
@@ -100,6 +98,7 @@ class GlassesHub:
             logging.info("Connection failed.")
             return
         self.connection_label.setText(f"Status: Connected to {self.g3.rtsp_url}")
+        self.update_recording_state()
 
     async def disconnect(self):
         if not self.g3 == None:
@@ -110,6 +109,7 @@ class GlassesHub:
         except:
             logging.info("Closing connection failed.")
         self.connection_label.setText("Status: Not Connected")
+        self.update_recording_state()
 
     async def calibrate(self):
         if self.g3 == None:
@@ -139,6 +139,7 @@ class GlassesHub:
                 logging.info("Creating new recording")
         except:
             logging.info("Glasses_Hub: _start_recording() Error: Unable to reach Glasses3")
+        self.update_recording_state()
     
     def start_recording(self, recording_folder_name : str):
         # TODO: what if overrides??? make sure it doesnt if self.recording_folder_name is already set, and make it None otherwise?   
@@ -171,6 +172,7 @@ class GlassesHub:
         except Exception as e:
             logging.info(e)
             logging.info("Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3")
+        self.update_recording_state()
 
     def stop_recording(self):
         asyncio.ensure_future(self._stop_recording())
@@ -188,6 +190,7 @@ class GlassesHub:
                 logging.info("Recording cancelled")
         except:
             logging.info("Glasses_Hub: _cancel_recording() Error: Unable to reach Glasses3")
+        self.update_recording_state()
 
     def cancel_recording(self):
         asyncio.ensure_future(self._cancel_recording())
@@ -298,7 +301,7 @@ class GlassesHub:
         """Function defining the UI of the Glasses Hub"""
         self.glasses_widget.setWindowTitle("Glasses Hub")
         self.glasses_widget.setGeometry(500, 500, 500, 500)
-        self.glasses_widget.closeEvent = self.closeEvent
+        self.glasses_widget.closeEvent = self.close_function
 
         self.connection_label: QLabel = QLabel(self.glasses_widget)
         self.connection_label.resize(1000, 20)

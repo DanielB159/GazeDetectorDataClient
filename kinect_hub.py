@@ -22,7 +22,8 @@ from pykinect_azure.k4a._k4a import (
 )
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit
 from qasync import QEventLoop
-from pyKinectAzure.examples.utils import Open3dVisualizer
+
+from imports import rec_manager
 
 class KinectHub:
     """Class representing the Kinect Hub"""
@@ -35,8 +36,12 @@ class KinectHub:
             cls._instance = super(KinectHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, kinect_hub_widget: QWidget):
+    def __init__(self, kinect_hub_widget: QWidget, record_manager : rec_manager, close_function):
         if not self._is_initialized:
+            self.record_manager : rec_manager = record_manager
+            if not record_manager:
+                raise Exception("no recording manager provided")
+            self.close_function = close_function
             self.is_recording: bool = False
             self.is_live_view: bool = False
             self._is_initialized: bool = True
@@ -57,7 +62,7 @@ class KinectHub:
         """Function defining the UI of the Kinect Hub"""
         self.kinect_hub_widget.setWindowTitle("Kinect Hub")
         self.kinect_hub_widget.setGeometry(500, 500, 500, 500)
-        self.kinect_hub_widget.closeEvent = self.closeEvent
+        self.kinect_hub_widget.closeEvent = self.close_function
         kinect_hub_title = QLabel(self.kinect_hub_widget)
         kinect_hub_title.setText("Kinect Hub")
         # enlarge the label
@@ -73,7 +78,7 @@ class KinectHub:
         start_rec_btn: QPushButton = QPushButton(self.kinect_hub_widget)
         start_rec_btn.setText("Start recording")
         start_rec_btn.move(200, 150)
-        start_rec_btn.clicked.connect(self.start_recording)
+        start_rec_btn.clicked.connect(lambda: self.start_recording(' '.join(str(datetime.utcnow()).split(':'))))
         start_rec_depth_btn: QPushButton = QPushButton(self.kinect_hub_widget)
         start_rec_depth_btn.setText("Start recording depth")
         start_rec_depth_btn.move(350, 150)
@@ -87,15 +92,10 @@ class KinectHub:
         input_playback_filepath: QLineEdit = QLineEdit(self.kinect_hub_widget)
         input_playback_filepath.move(200, 250)
 
-    def is_able_to_record(self):
-        # TODO: dummy function
-        return True
-
-    def closeEvent(self, event) -> None:
-        """Function to handle the close event"""
+    def __del__(self):
         self._instance = None
         self._is_initialized = False
-        del self
+        print("Kinect hub instance destroyed.")
 
     def start_playback(self) -> None:
         input_line: QLineEdit = self.kinect_hub_widget.findChild(QLineEdit)
@@ -166,13 +166,13 @@ class KinectHub:
         if self.device is None:
             return
         self.is_recording = True
-        start_recording_thread: threading.Thread = threading.Thread(
-            target=self.start_recording_thread
-        )
+        self.record_manager.kinect_is_recording = True
+        start_recording_thread : threading.Thread = threading.Thread(target=self.start_recording_thread)
         start_recording_thread.start()
 
     def stop_recording(self) -> None:
         self.is_recording = False
+        self.record_manager.kinect_is_recording = False
 
     def configure_recordings_file(self, file_name: str) -> str:
         # if the path /recordings does not exist, create it
@@ -244,6 +244,7 @@ class KinectHub:
         cv2.destroyWindow("Recording")
         self.stop_kinect()
         self.is_recording = False
+        self.record_manager.kinect_is_recording = False
 
     def start_recording_depth(self, recording_folder_name) -> None:
         """Function to start recording the kinect camera"""
@@ -471,7 +472,7 @@ class KinectHub:
                     self.device.start(self.device_config)
                 else:
                     self.device.start(self.device_config, self.RECORD, self.FILEPATH)
-                self.start_timestamp = datetime.utcnow() + timedelta(hours=2)
+                self.start_timestamp = datetime.utcnow()
             else:
                 self.device.start(self.device_config)
         except SystemExit as exception:
