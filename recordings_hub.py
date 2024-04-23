@@ -6,7 +6,7 @@ from g3pylib import Glasses3
 from imports import os
 from imports import cv2
 from g3pylib.recordings.recording import Recording
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import logging
 import requests
@@ -74,7 +74,9 @@ def download_recording_thread(rec_name: str, http_url, directory):
         meta_data = r_meta_data.json()
         created = meta_data["created"]
         # convert the created string to a datetime object
-        created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%fZ")
+        created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(hours=3)
+
+        #created += datetime(hour=2) # offset timestamp
         # save the creation date of the recording to a file
         with open(os.path.join(directory, "start_timestamp.txt"), "w") as f:
             f.write(str(created))

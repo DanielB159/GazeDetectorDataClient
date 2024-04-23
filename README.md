@@ -1,6 +1,6 @@
 # GazeDetectorDataClient
 #### Short description
-This client will be used for data collection for netural network training - a CNN for gaze detection.
+This client will be used for data collection of gaze data from G3 glasses - and synchronization of them with a kinect camera.
 
 #### Architecture
 We will use python's PyQT5 to build the desktop app, and relevant SDK's for handeling the communication with the camera and the glasses.
@@ -10,12 +10,15 @@ The used python libraries are listed in .devcontainer/requirements.txt file. To 
 ```
 pip install -r .devcontainer/requirements.txt
 ```
-We also used the g3pylib library in order to interface with the G3 glasses. In order to install the sub-module that is the g3pylic libray, run the following commands in the following order:
+- We used python-opencv and numpy for processing the images.
+- We used the g3pylib library in order to interface with the G3 glasses, and pykinectAzure library to interface with the kinect camera. In order to install the sub-modules that is the g3pylic libray, run the following commands in the following order:
 ```
 git submodule init
 git submodule update
 pip install ./g3pylib
 ```
+- the pyKinectAzure is contained within `.devcontainer/requirements.txt`
+
 
 ### NTP (Network Time Protocol)
 In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
@@ -45,12 +48,25 @@ recordings:
 ```
 
 ### Kinect Hub
-The kinect hub has the current functionality:
-- Get live view of the current camera feed.
-- Record a video feed from the current camera.
-  **Note:** The recording does not save a recording file, but saves the recording in **images** in the filepath recordings/recording(x) where x is the lowest natural number that is not taken in this path. After the recording is done a *start_timestamp.txt* file is also saved with the UTC+2 start time of the recording (Israel time).
-
-
+1. The kinect hub has the this functionality:
+  - Get live view of the current camera feed with depth or without depth.
+  - Record a video feed from the current camera with depth or without depth.
+2. The depth is measured in milimeters (one thousanth of a meter)
+3. The recordings, if dont without the glasses hub are saved in the following file structure:
+###### Recordings file structure
+```
+recordings: 
+    > recording_<timestamp_of_recording>:
+        > Kinect:
+            > timestamp_1
+                timestamp_1_depth_greyscale.png - gryescale depth photo
+                timestamp_1_.csv - a .csv file with the depth in milimeters of each pixel
+                timestamp_1_depth.png - a RGB photo of the depth
+                timestamp_1.png - a colored photo
+            > timestamp_2
+            ...
+```
+ 
 #### Design
 ##### The client will have one main hub screen:
 ![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
