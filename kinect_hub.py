@@ -256,6 +256,7 @@ class KinectHub:
         if self.device is None:
             return
         self.is_recording = True
+        self.record_manager.kinect_is_recording = True
         start_recording_thread: threading.Thread = threading.Thread(
             target=self.start_recording_depth_thread
         )
@@ -314,6 +315,7 @@ class KinectHub:
             cv2.destroyWindow("Recording Depth")
             self.stop_kinect()
             self.is_recording = False
+            self.record_manager.kinect_is_recording = False
             
     def convert_greyscale_to_csv(self) -> None:
         """Function to convert all of the images taken in greyscale to csv files"""
