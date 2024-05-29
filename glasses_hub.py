@@ -69,7 +69,6 @@ class GlassesHub:
             self.record_manager.glasses_is_connected = False
             self.record_manager.glasses_is_recording = False
             return
-        print("here")
         self.record_manager.glasses_is_connected = True
         state = await self.g3.recorder.get_uuid() != None
         self.record_manager.glasses_is_recording = state

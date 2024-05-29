@@ -247,7 +247,7 @@ class KinectHub:
         self.record_manager.kinect_is_recording = False
 
     def start_recording_depth(self, recording_folder_name) -> None:
-        """Function to start recording the kinect camera"""
+        """Function to start recording the kinect camera with depth"""
         if self.is_live_view:
             print("not able to start recording when in live view")
             return
@@ -295,7 +295,7 @@ class KinectHub:
                 # get the timestamp from the image
                 time_offset_image = k4a_image_get_device_timestamp_usec(img_obj.handle())
                 # start a thread to save all of the images to a file
-                # self.write_all_imagees(raw_color_image, transformed_depth_image, transformed_depth_image_greyscale, str(time_offset_image))
+                # self.write_all_images(raw_color_image, transformed_depth_image, transformed_depth_image_greyscale, str(time_offset_image))
                 executor.submit(self.write_all_imagees, raw_color_image, transformed_depth_image, transformed_depth_image_greyscale, str(time_offset_image))
                 # self.write_all_imagees(raw_color_image, transformed_depth_image, transformed_depth_image_greyscale, time_offset_image)
 
