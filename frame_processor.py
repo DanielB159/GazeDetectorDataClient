@@ -8,7 +8,7 @@ import numpy as np
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = 'test'
+rec_name = '2024-06-05 16_44_41.457195'
 
 class FrameData:
     def __init__(self, recording_name: str, timestamp_offset: float, glasses_gyro : np.array):
@@ -35,11 +35,13 @@ class FrameData:
             shutil.rmtree(post_path + "/" + self.kinect_image_name)
         
         os.mkdir(post_path + "/" + self.kinect_image_name)    # create dir for frame
-        shutil.copy2(recording_path + "/Kinect/" + self.kinect_image_name + ".png",
+        shutil.copy2(recording_path + "/Kinect/" + self.kinect_image_name + "/" + self.kinect_image_name + ".png",
                      post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + ".png")
+        shutil.copy2(recording_path + "/Kinect/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv",
+                     post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv")
         
-        imu_file = open(post_path + "/" + self.kinect_image_name + "/imu_data.txt", 'w')
-        imu_file.write(str(self.gyro_state))
+        imu_file = open(post_path + "/" + self.kinect_image_name + "/gaze_data.json ", 'w')
+        imu_file.write(str(self.glasses_gaze))
         imu_file.close()
 
         print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
@@ -104,9 +106,9 @@ def process_frames():
     kinect_images_strings = os.listdir(current_dir + '/Kinect') # list of file names
     kinect_images_timestamps = []
     for s in kinect_images_strings:
-        if (s[-4:] == ".png"):
+        if (s[-4:] != ".txt"):
             try:
-                kinect_images_timestamps.append(int(s[:-4]))
+                kinect_images_timestamps.append(int(s))
             except:
                 print("Warning: " + s + " is not in the correct format for a Kinect recording file.")
     heapq.heapify(kinect_images_timestamps)
