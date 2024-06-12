@@ -474,7 +474,7 @@ class KinectHub:
                     self.device.start(self.device_config)
                 else:
                     self.device.start(self.device_config, self.RECORD, self.FILEPATH)
-                self.start_timestamp = datetime.utcnow()
+                self.start_timestamp = datetime.now()
             else:
                 self.device.start(self.device_config)
         except SystemExit as exception:
