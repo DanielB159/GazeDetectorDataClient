@@ -20,12 +20,12 @@ class RecordingManager:
             self.kinect_is_recording = False
 
     def is_glasses_available(self):
-        print(self.glasses_hub)
-        print(self.glasses_is_connected)
-        print(self.glasses_is_recording)
+        # print(self.glasses_hub)
+        # print(self.glasses_is_connected)
+        # print(self.glasses_is_recording)
         return self.glasses_hub and self.glasses_is_connected and not self.glasses_is_recording
     
     def is_kinect_available(self):
-        print(self.kinect_hub)
-        print(self.kinect_is_recording)
+        # print(self.kinect_hub)
+        # print(self.kinect_is_recording)
         return self.kinect_hub and not self.kinect_is_recording

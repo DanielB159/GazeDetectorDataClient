@@ -54,16 +54,17 @@ def start_recording() -> None:
         return
     
     recording_folder_name = '_'.join(str(datetime.now()).split(':'))
-    kinect_hub.start_recording(recording_folder_name)
+    kinect_hub.start_recording_depth(recording_folder_name)
+    # kinect_hub.start_recording(recording_folder_name)
     glasses_hub.start_recording(recording_folder_name)
 
     record_manager.glasses_is_recording = True
     record_manager.kinect_is_recording = True
     
-def end_recording() -> None:
+def end_recording(end_kinect: bool, end_glasses: bool) -> None:
     # no need to check, will stop and update if possible
-    kinect_hub.stop_recording() # make sure is self updating!
-    glasses_hub.stop_recording()
+    if (end_kinect): kinect_hub.stop_recording() # make sure is self updating!
+    if (end_glasses): glasses_hub.stop_recording()
     return
 
 def cancel_recording() -> None:
@@ -104,7 +105,7 @@ def define_main_ui(main_widget: QWidget) -> None:
     end_recording_button = QPushButton(main_widget)
     end_recording_button.setText("End Recording")
     end_recording_button.move(200, 250)
-    end_recording_button.clicked.connect(lambda: end_recording())
+    end_recording_button.clicked.connect(lambda: end_recording(end_kinect=True, end_glasses=True))
 
     cancel_recording_button = QPushButton(main_widget)
     cancel_recording_button.setText("Cancel Recording")
