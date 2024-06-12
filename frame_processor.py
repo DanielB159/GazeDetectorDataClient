@@ -5,23 +5,21 @@ import shutil
 import gzip
 import heapq
 import numpy as np
+from datetime import datetime, timedelta
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-06-05 16_44_41.457195'
+rec_name = '2024-06-12 15_40_48.361664'
 
 class FrameData:
-    def __init__(self, recording_name: str, timestamp_offset: float, glasses_gyro : np.array):
+    # NOTE: all timestamps must already be synchronized to the kinect image at this point
+    def __init__(self, recording_name: str, glasses_gyro : np.array):
         self.recording_name = recording_name
         
         self.kinect_image : str = None      # name of timestamp.png
         self.glasses_imu : dict = None      # current imu data
         self.glasses_gaze : dict = None     # current gaze data
         self.glasses_image : float = None   # cv2 float
-
-        # IMPORTANT assume all timestamps given are in absolute time (meaning already added the offset)
-        self.gyro_state : np.array = glasses_gyro   # 3d vector of direction relative to glasses
-        self.gyro_timestamp : float = timestamp_offset
 
     def save_frame(self):
         # TODO: dont let it override
@@ -54,12 +52,7 @@ class FrameData:
     def update_glasses_imu(self, data : dict):
         if "gyroscope" in data["data"]:
             # update gyro
-            deltaTime = data["timestamp"] - self.gyro_timestamp
-            print(data["data"]["gyroscope"])
-            temp = deltaTime * np.array(data["data"]["gyroscope"], float)
-            self.gyro_state += temp
-            self.gyro_timestamp = data["timestamp"]
-        self.glasses_imu = data
+            self.glasses_imu = data
     
     def update_glasses_gaze(self, data : dict):
         self.glasses_gaze = data
@@ -70,11 +63,27 @@ class FrameData:
 def process_frames():
     current_dir = REC_DIR_LOC + '/' + rec_name
     
+    # get offset of glasses and kinect
+    with open(current_dir + '/Kinect/start_timestamp.txt', 'r') as f:
+        time_str = f.readline()
+        print(time_str)
+        kinect_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
+
+    with open(current_dir + '/Glasses3/start_timestamp.txt', 'r') as f:
+        time_str = f.readline()
+        print(time_str)
+        glasses_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
+
+    # deduct offset to glasses timestamp to synchronize
+    delta_start_time = glasses_start_time - kinect_start_time
+    glasses_offset = delta_start_time.seconds + ((10**(-6)) * delta_start_time.microseconds)
+
     with gzip.open(current_dir + '/Glasses3/gazedata.gz', 'rb') as f:
         lines = f.readlines()
         glasses_gaze_data = []  # keys are timestamps!
         for line in lines:
             dict = json.loads(line[: -1])
+            dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_gaze_data.append((dict["timestamp"], dict))
         heapq.heapify(glasses_gaze_data)
         #print(glasses_gaze_data)
@@ -92,6 +101,8 @@ def process_frames():
             if "magnetometer" in dict["data"]:
                 is_magnetometer = True
                 # to separate equal timestamps
+            
+            dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_imu_data.append((dict["timestamp"], is_magnetometer, dict))
         heapq.heapify(glasses_imu_data)
         #print(glasses_imu_data)
@@ -99,6 +110,7 @@ def process_frames():
     # with open(current_dir + '/Glasses3/imudata.gz') as f:
     #     glasses_imu_data = json.load(f)
     
+    # NOTE: not sycnrhonized
     glasses_video = cv2.VideoCapture(current_dir + '/Glasses3/scenevideo.mp4')
     glasses_video_fps = glasses_video.get(cv2.CAP_PROP_FPS)
     glasses_video_frame_total = glasses_video.get(cv2.CAP_PROP_FRAME_COUNT)  # total frame count
@@ -136,7 +148,7 @@ def process_frames():
 
     MAX_INT = pow(2, 32)
     KINECT_MUL = pow(10, -6)
-    current_frame = FrameData(recording_name=rec_name ,timestamp_offset=glasses_imu_start, glasses_gyro=np.array([0, 0, 0], float))
+    current_frame = FrameData(recording_name=rec_name, glasses_gyro=np.array([0, 0, 0], float))
 
     # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
     # TODO: actually update the gyro stuff
