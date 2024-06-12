@@ -8,7 +8,7 @@ import numpy as np
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-05-29 17_45_58.356908'
+rec_name = '2024-06-05 16_44_41.457195'
 
 class FrameData:
     def __init__(self, recording_name: str, timestamp_offset: float, glasses_gyro : np.array):
@@ -40,8 +40,8 @@ class FrameData:
         shutil.copy2(recording_path + "/Kinect/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv",
                      post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv")
         
-        imu_file = open(post_path + "/" + self.kinect_image_name + "/imu_data.txt", 'w')
-        imu_file.write(str(self.gyro_state))
+        imu_file = open(post_path + "/" + self.kinect_image_name + "/gaze_data.json ", 'w')
+        imu_file.write(str(self.glasses_gaze))
         imu_file.close()
 
         print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
