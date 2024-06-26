@@ -6,6 +6,7 @@ import gzip
 import heapq
 import numpy as np
 from datetime import datetime, timedelta
+import copy
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
@@ -16,12 +17,59 @@ class FrameData:
     def __init__(self, recording_name: str, glasses_gyro : np.array):
         self.recording_name = recording_name
         
-        self.kinect_image : str = None      # name of timestamp.png
+        self.kinect_image_name : str = None      # name of timestamp.png
+        self.current_gaze : list = []     # gaze data queue for the latest kinect image, changes every save
         self.glasses_imu : dict = None      # current imu data
-        self.glasses_gaze : dict = None     # current gaze data
+        self.glasses_gaze : list = []     # gaze data queue, will keep updating after save
+        # keep enqueueing, dequeue to needed time with new kinect image
         self.glasses_image : float = None   # cv2 float
 
+        self.gaze_time_threshold : float = 1    # seconds, earliest gaze delta time to compare against
+        self.gaze_time_epsilon : float = 0.1    # seconds, earliest gaze delta time to consider saving
+        self.gaze_distance_episilon: float = .5  # ?, largest distance to allow for eye movement or something
+        self.variance_epsilon: float = 0.5
+
+    # check if this sample can be trusted
+    def validate_sample(self) -> bool:
+        if self.kinect_image_name == None:
+            # no image to save
+            return False
+        if len(self.current_gaze) == 0:
+            # not enough gaze samples
+            return False
+        
+        latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
+
+        def normalize(v):
+            norm = np.linalg.norm(v)
+            if norm == 0:
+                return v    # problem!
+            return np.divide(v, norm)
+        direction_list = []
+        for sample in self.current_gaze:
+            direction_list.append(normalize(sample["data"]["gaze3d"]))    # what if 0
+
+        # verify most recent gaze data is not too far
+        if (abs((float(self.kinect_image_name) * (10**-6)) - latest_gaze["timestamp"]) > self.gaze_time_epsilon):
+            # most recent gaze data too far back in the timeline
+            return False
+        
+        # verify most recent gaze data is not too far from the mean
+        mean_gaze = np.mean(direction_list)
+        if (np.linalg.norm(mean_gaze - normalize(latest_gaze["data"]["gaze3d"])) > self.gaze_distance_episilon):
+            return False
+        
+        # verify not too much movement happened
+        if (np.var(direction_list) > self.variance_epsilon):
+            return False
+
+        return True
+
+
     def save_frame(self):
+        if not self.validate_sample():
+            return
+
         # TODO: dont let it override
         recording_path = REC_DIR_LOC + "/" + self.recording_name
         post_path = POST_DIR_LOC + "/" + self.recording_name
@@ -39,15 +87,19 @@ class FrameData:
                      post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv")
         
         imu_file = open(post_path + "/" + self.kinect_image_name + "/gaze_data.json ", 'w')
-        imu_file.write(str(self.glasses_gaze))
+        imu_file.write(str(self.current_gaze[len(self.current_gaze) - 1]))
         imu_file.close()
 
         print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
 
-    # need more incapsulation for adding imu and shit
+    # need more encapsulation for adding imu and shit
     def update_kinect_image(self, name : int):
         self.kinect_image_name = str(name)
         # timestamp is 10^(-6)
+        while (len(self.glasses_gaze) > 0) and (abs((float(self.kinect_image_name) * (10**-6)) - self.glasses_gaze[0]["timestamp"]) > self.gaze_time_threshold):
+            # gaze sample too far to be considered
+            self.glasses_gaze.pop(0) # remove item from the queue
+        self.current_gaze = copy.deepcopy(self.glasses_gaze) # copy current content to the current gaze
     
     def update_glasses_imu(self, data : dict):
         if "gyroscope" in data["data"]:
@@ -55,7 +107,8 @@ class FrameData:
             self.glasses_imu = data
     
     def update_glasses_gaze(self, data : dict):
-        self.glasses_gaze = data
+        # enqueue new gaze data
+        self.glasses_gaze.append(data)
     
     def update_glasses_image(self, image: float):
         self.glasses_image = image
