@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-06-12 15_40_48.361664'
+rec_name = '2024-06-12 17_01_48.832935'
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
