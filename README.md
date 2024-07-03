@@ -1,9 +1,10 @@
 # GazeDetectorDataClient
 #### Short description
-This client will be used for data collection of gaze data from G3 glasses - and synchronization of them with a kinect camera.
+This client manages the simultaneous recording from a USB connected Azure Kinect DK, and a Tobii Glasses3 unit over Wi-Fi.
+It also contains a module for synchronizing those recordings and organizing them.
 
 #### Architecture
-We will use python's PyQT5 to build the desktop app, and relevant SDK's for handeling the communication with the camera and the glasses.
+This implementation uses python’s PyQT5 for the desktop UI, and relevant SDKs for handling the communication with the camera and the glasses.
 
 #### Libraries and dependencies
 The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
@@ -19,7 +20,34 @@ pip install ./g3pylib
 ```
 - the pyKinectAzure is contained within `.devcontainer/requirements.txt`
 
+### Usage
+This section is a step by step explanation of how to make use of this client to create a recording. Individual explanation of components will be detailed on later sections.
 
+#### Client hubs
+Both the glasses and the kinect individually communicate with their respective hubs, where you can interact with them individually.
+To record them simultaneously both hubs must be running, which will allow the main hub to run the recordings both at once.
+
+#### Connect to glasses
+The client and the Glasses3 unit must be on the same network to communicate:
+1. Connect a computer to the Glasses3 unit via an ethernet cable. Or connect to the wifi signal that the glasses broadcast while not connected to any network.
+2. On your browser, connect to 'http://<g3-address>'. Where <g3-address> is by default the serial number of the glasses. ex. 'TG03B-080202048921'. Note that some browsers fail to find this DNS address, and instead you have to replace <g3-address> with the glasses's ip that is connected to your computer. We found that Firefox is consistently able to connect.
+3. Go to "Network".
+4. Create a new configuration, set ipv4 mode to dchp, SSID to your network name, if the network is passowrd protected then set Security to wpa-psk and put the password under Pre Shared Key.
+5. Mark AutoConnect on and hit apply.
+6. The glasses should now automatically connect to the network, and the client will be able to communicate with them.
+
+#### Calibration
+Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
+With each new user, the glasses must be calibrated to them for best gaze detection accuracy. The user should hold up the calibration cards an arm's length away from their face, and stare directly at the center on the card. Then click the "Calibrate" button on the Glasses Hub.
+Should the calibration be successful, you are now ready to start the recording. *NOTE add calibration notification. *NOTE add verification instructions
+
+#### Recording procedure
+Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
+When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
+To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
+*NOTE risks of running the recording too long.
+
+[Synchronization!!!]
 ### NTP (Network Time Protocol)
 In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
 In order to record using this client and using the glasses, both the computer running the client and the glasses need to be connected to an NTP server. 
@@ -36,16 +64,25 @@ The computer which is running the client needs to also be connected to an NTP se
 ### Recordings file structure
 ```
 recordings: 
-    > recording_name:
+    > recording_name (timestamp_of_recording):
         > Glasses3:
             start_timestamp.txt
             gazedata.gz
             imudata.gz
+            eventdata.gz
             scenevideo.mp4
         > Kinect:
-            start_timestamp.txt
-            [timestamp].png
+            > timestamp_1
+                timestamp_1_depth_greyscale.png    - gryescale depth photo
+                timestamp_1_.csv                   - a .csv file with the depth in milimeters of each pixel
+                timestamp_1_depth.png              - a RGB photo of the depth
+                timestamp_1.png                    - a colored photo
+            > timestamp_2
+            ...
 ```
+
+#### Data and recordings
+explanation of the data recorded
 
 ### Kinect Hub
 1. The kinect hub has the this functionality:
@@ -53,26 +90,3 @@ recordings:
   - Record a video feed from the current camera with depth or without depth.
 2. The depth is measured in milimeters (one thousanth of a meter)
 3. The recordings, if dont without the glasses hub are saved in the following file structure:
-###### Recordings file structure
-```
-recordings: 
-    > recording_<timestamp_of_recording>:
-        > Kinect:
-            > timestamp_1
-                timestamp_1_depth_greyscale.png - gryescale depth photo
-                timestamp_1_.csv - a .csv file with the depth in milimeters of each pixel
-                timestamp_1_depth.png - a RGB photo of the depth
-                timestamp_1.png - a colored photo
-            > timestamp_2
-            ...
-```
- 
-#### Design
-##### The client will have one main hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
-
-##### The glasses hub button will open a glasses hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/fabc0a0e-e7f6-46cc-bb1f-4b217e4982e0)
-
-##### The kinect hub button will open a kinect hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/7a01b8c2-cb95-49e6-aefd-4e608a25fdba)
