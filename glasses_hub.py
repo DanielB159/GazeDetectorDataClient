@@ -1,4 +1,5 @@
 """Module with glasses hub class and methods"""
+
 from PyQt5.QtWidgets import QPushButton, QWidget, QLabel
 from qasync import QEventLoop
 from imports import asyncio
@@ -12,7 +13,8 @@ from recordings_hub import download_recording_thread
 
 import threading
 import logging
-#from asgiref.sync import async_to_sync
+
+# from asgiref.sync import async_to_sync
 from datetime import datetime
 
 from imports import rec_manager
@@ -45,9 +47,11 @@ class GlassesHub:
             cls._instance = super(GlassesHub, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, glasses_hub_widget: QWidget, record_manager : rec_manager, close_function):
+    def __init__(
+        self, glasses_hub_widget: QWidget, record_manager: rec_manager, close_function
+    ):
         """Constructor for Glasses Hub.
-        
+
         Args:
             glasses_hub_widget (QWidget): PyQt5 widget for displaying this hub.
             record_manager (rec_manager): Instance managing which Hubs are available for recording.
@@ -57,16 +61,17 @@ class GlassesHub:
             GlassesHub: Instance of this class.
         """
         if not self._is_initialized:
-            self.record_manager : rec_manager = record_manager
+            self.record_manager: rec_manager = record_manager
             if not record_manager:
-                raise Exception("no recording manager provided") # unnecessary check
+                raise Exception("no recording manager provided")  # unnecessary check
             self.close_function = close_function
+            self.host_ip = None
             self.glasses_widget: QWidget = glasses_hub_widget
             self._is_initialized: bool = True
             self.battery_level: float = 0
             self.storage_free: int = 0
             self.storage_size: int = 1
-            self.recording_folder_name : str = None
+            self.recording_folder_name: str = None
             self.define_ui()
             self.previous_recording = None  # TODO: ADD TYPING
             self.g3: Glasses3 = None
@@ -74,8 +79,7 @@ class GlassesHub:
             asyncio.ensure_future(self.connect())  # attempt to auto-connect to glasses
 
     async def _update_recording_state(self):
-        """Update recording_manager instance of glasses status.
-        """
+        """Update recording_manager instance of glasses status."""
         # check glasses are connected
         # TODO: what if lost connection?
         if self.g3 == None:
@@ -83,17 +87,17 @@ class GlassesHub:
             self.record_manager.glasses_is_recording = False
             return
         self.record_manager.glasses_is_connected = True
-        state = await self.g3.recorder.get_uuid() != None # check if there is an ongoing recording
+        state = (
+            await self.g3.recorder.get_uuid() != None
+        )  # check if there is an ongoing recording
         self.record_manager.glasses_is_recording = state
-    
+
     def update_recording_state(self):
-        """Synchronously call _update_recording_state.
-        """
+        """Synchronously call _update_recording_state."""
         asyncio.ensure_future(self._update_recording_state())
 
     def __del__(self):
-        """Close connection and recordings in progress on instance destruction.
-        """
+        """Close connection and recordings in progress on instance destruction."""
         # in case a recording is in progress, close it
         self._instance = None
         self._is_initialized = False
@@ -103,37 +107,37 @@ class GlassesHub:
         # TODO: how do i force this to remain open? is it already so?
 
     async def connect(self):
-        """Connect this machine to the glasses.
-        """
+        """Connect this machine to the glasses."""
         if not self.g3 == None:
             logging.info("Already Connected, reconnecting...")
         try:
-            self.g3 = await g3pylib.connect_to_glasses.with_hostname(
-                os.environ["G3_HOSTNAME"]
+            hostmame = (
+                os.environ["G3_HOSTNAME"] if os.environ["G3_HOSTNAME"] else self.host_ip
             )
-        except:
-            logging.info("Connection failed.")
+            if not hostmame:
+                raise ValueError("host ip not defined")
+            self.g3 = await g3pylib.connect_to_glasses.with_hostname(hostname=hostmame)
+        except Exception as e:
+            logging.info(f"Connection failed: {e}")
             return
         self.connection_label.setText(f"Status: Connected to {self.g3.rtsp_url}")
-        self.update_recording_state() # update recording manager status TODO: just await on async?
+        self.update_recording_state()  # update recording manager status TODO: just await on async?
 
     async def disconnect(self):
-        """Disconnect this machine from the glasses.
-        """
+        """Disconnect this machine from the glasses."""
         if not self.g3 == None:
             logging.info("Not connected.")
         try:
-            await self._stop_recording() # end recordings before disconnecting
+            await self._stop_recording()  # end recordings before disconnecting
             await self.g3.close()
             self.g3 = None
         except:
             logging.info("Closing connection failed.")
         self.connection_label.setText("Status: Not Connected")
-        self.update_recording_state() # update recording manager status
+        self.update_recording_state()  # update recording manager status
 
     async def calibrate(self):
-        """Run glasses calibration sequence.
-        """
+        """Run glasses calibration sequence."""
         if self.g3 == None:
             logging("Not connected.")
             return
@@ -147,31 +151,30 @@ class GlassesHub:
             print("Calibration failed.")
 
     async def _start_recording(self):
-        """Start a new recording if none are currently ongoing.
-        """
+        """Start a new recording if none are currently ongoing."""
         if self.g3 == None:
             logging("Glasses_Hub: Not Connected.")
             return
         try:
             if await self.g3.recorder.get_uuid() != None:
-                logging.info(
-                    "Warning: Recording ongoing, can't start a new recording."
-                )
+                logging.info("Warning: Recording ongoing, can't start a new recording.")
                 return
             async with self.g3.recordings.keep_updated_in_context():
                 await self.g3.recorder.start()
                 logging.info("Creating new recording")
         except:
-            logging.info("Glasses_Hub: _start_recording() Error: Unable to reach Glasses3")
-        self.update_recording_state() # update recording manager status
-    
-    def start_recording(self, recording_folder_name : str):
+            logging.info(
+                "Glasses_Hub: _start_recording() Error: Unable to reach Glasses3"
+            )
+        self.update_recording_state()  # update recording manager status
+
+    def start_recording(self, recording_folder_name: str):
         """Synchronously call _start_recording.
 
         Args:
             recording_folder_name (str): Name of folder to save this recording to. (Must be unique!)
         """
-        # TODO: what if overrides??? make sure it doesnt if self.recording_folder_name is already set, and make it None otherwise?   
+        # TODO: what if overrides??? make sure it doesnt if self.recording_folder_name is already set, and make it None otherwise?
         self.recording_folder_name = recording_folder_name
         asyncio.ensure_future(self._start_recording())
 
@@ -198,21 +201,25 @@ class GlassesHub:
 
                 # TODO: assuming dir doesnt exist!
                 os.makedirs("./recordings/" + self.recording_folder_name + "/Glasses3")
-                download_recording_thread(self.previous_recording.uuid, self.g3._http_url, "./recordings/" + self.recording_folder_name + "/Glasses3")
+                download_recording_thread(
+                    self.previous_recording.uuid,
+                    self.g3._http_url,
+                    "./recordings/" + self.recording_folder_name + "/Glasses3",
+                )
 
         except Exception as e:
             logging.info(e)
-            logging.info("Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3")
-        self.update_recording_state() # update recording manager status
+            logging.info(
+                "Glasses_Hub: _stop_recording() Error: Unable to reach Glasses3"
+            )
+        self.update_recording_state()  # update recording manager status
 
     def stop_recording(self):
-        """Synchronously call _stop_recording.
-        """
+        """Synchronously call _stop_recording."""
         asyncio.ensure_future(self._stop_recording())
 
     async def _cancel_recording(self):
-        """Cancel current recording in progress, without saving any of the data.
-        """
+        """Cancel current recording in progress, without saving any of the data."""
         if self.g3 == None:
             logging.info("Not connected.")
             return
@@ -224,23 +231,25 @@ class GlassesHub:
                 await self.g3.recorder.cancel()  # TODO: what if failed?
                 logging.info("Recording cancelled")
         except:
-            logging.info("Glasses_Hub: _cancel_recording() Error: Unable to reach Glasses3")
-        self.update_recording_state() # update recording manager status
+            logging.info(
+                "Glasses_Hub: _cancel_recording() Error: Unable to reach Glasses3"
+            )
+        self.update_recording_state()  # update recording manager status
 
     def cancel_recording(self):
-        """Synchronously call _cancel_recording.
-        """
+        """Synchronously call _cancel_recording."""
         asyncio.ensure_future(self._cancel_recording())
 
     async def get_sd_and_battery_info(self):
-        """Request battery and sd status from the glasses and display them to the user.
-        """
+        """Request battery and sd status from the glasses and display them to the user."""
         if self.g3 == None:
             logging.info("Not Connected.")
             return
         try:
             # define the requests
-            req_battery = self.g3._connection.generate_get_request("//system/battery.level")
+            req_battery = self.g3._connection.generate_get_request(
+                "//system/battery.level"
+            )
             req_storage_size = self.g3._connection.generate_get_request(
                 "//system/storage.size"
             )
@@ -254,7 +263,9 @@ class GlassesHub:
                 logging.error("Error getting battery level")
                 return
             self.battery_level = float(res_battery)
-            self.battery_label.setText("Battery: {:.2f}%".format(self.battery_level * 100))
+            self.battery_label.setText(
+                "Battery: {:.2f}%".format(self.battery_level * 100)
+            )
             # or
             # self.battery_label.setText(f"Battery: {self.battery_level * 100:.2f}%")
             res_storage_size = await self.g3._connection.require(req_storage_size)
@@ -273,13 +284,14 @@ class GlassesHub:
                 )
             )
 
-            # logging.info(sd_info) 
+            # logging.info(sd_info)
         except:
-            logging.info("Glasses_Hub: get_sd_and_battery_info() Error: Unable to reach Glasses3")
+            logging.info(
+                "Glasses_Hub: get_sd_and_battery_info() Error: Unable to reach Glasses3"
+            )
 
     async def lv_start(self):
-        """Start the glasses live view and display it to the user.
-        """
+        """Start the glasses live view and display it to the user."""
         # TODO: stop live view before recording? can do both i think
         try:
             async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
@@ -336,8 +348,9 @@ class GlassesHub:
             return
         recordings = await self.g3.recordings._get_children()
         recordings_widget = QWidget()
-        recordings_hub: RecordingsHub = RecordingsHub(recordings_widget, recordings, self.g3)
-        
+        recordings_hub: RecordingsHub = RecordingsHub(
+            recordings_widget, recordings, self.g3
+        )
 
     def define_ui(self):
         """Function defining the UI of the Glasses Hub"""
@@ -382,22 +395,20 @@ class GlassesHub:
         self.record_start_button.setText("Start Recording")
         self.record_start_button.move(50, 150)
         self.record_start_button.clicked.connect(
-            lambda: self.start_recording("solo_recording_" + '_'.join(str(datetime.now()).split(':')))
+            lambda: self.start_recording(
+                "solo_recording_" + "_".join(str(datetime.now()).split(":"))
+            )
         )
 
         self.record_stop_button: QPushButton = QPushButton(self.glasses_widget)
         self.record_stop_button.setText("Stop Recording")
         self.record_stop_button.move(150, 150)
-        self.record_stop_button.clicked.connect(
-            lambda: self.stop_recording()
-        )
+        self.record_stop_button.clicked.connect(lambda: self.stop_recording())
 
         self.record_cancel_button: QPushButton = QPushButton(self.glasses_widget)
         self.record_cancel_button.setText("Cancel Recording")
         self.record_cancel_button.move(100, 200)
-        self.record_cancel_button.clicked.connect(
-            lambda: self.cancel_recording()
-        )
+        self.record_cancel_button.clicked.connect(lambda: self.cancel_recording())
 
         # get SD card info an Battery info
         self.sd_info_button: QPushButton = QPushButton(self.glasses_widget)

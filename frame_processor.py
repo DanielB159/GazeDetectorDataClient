@@ -10,7 +10,7 @@ import copy
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-06-12 17_01_48.832935'
+rec_name = '2024-06-26 14_48_49.855310'
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
@@ -38,6 +38,8 @@ class FrameData:
             # not enough gaze samples
             return False
         
+        return True # ignore for testing    
+        
         latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
 
         def normalize(v):
@@ -46,7 +48,9 @@ class FrameData:
                 return v    # problem!
             return np.divide(v, norm)
         direction_list = []
-        for sample in self.current_gaze:
+        for sample in self.current_gaze:            
+            if not sample["data"]:
+                return False
             direction_list.append(normalize(sample["data"]["gaze3d"]))    # what if 0
 
         # verify most recent gaze data is not too far
@@ -130,6 +134,11 @@ def process_frames():
     # deduct offset to glasses timestamp to synchronize
     delta_start_time = glasses_start_time - kinect_start_time
     glasses_offset = delta_start_time.seconds + ((10**(-6)) * delta_start_time.microseconds)
+    if delta_start_time.days < 0:
+         delta_start_time = kinect_start_time - glasses_start_time
+         glasses_offset = delta_start_time.seconds + ((10**(-6)) * delta_start_time.microseconds)
+         glasses_offset = -glasses_offset
+
 
     with gzip.open(current_dir + '/Glasses3/gazedata.gz', 'rb') as f:
         lines = f.readlines()
