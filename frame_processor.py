@@ -5,25 +5,75 @@ import shutil
 import gzip
 import heapq
 import numpy as np
+from datetime import datetime, timedelta
+import copy
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-06-05 16_44_41.457195'
+rec_name = '2024-06-26 14_48_49.855310'
 
 class FrameData:
-    def __init__(self, recording_name: str, timestamp_offset: float, glasses_gyro : np.array):
+    # NOTE: all timestamps must already be synchronized to the kinect image at this point
+    def __init__(self, recording_name: str, glasses_gyro : np.array):
         self.recording_name = recording_name
         
-        self.kinect_image : str = None      # name of timestamp.png
+        self.kinect_image_name : str = None      # name of timestamp.png
+        self.current_gaze : list = []     # gaze data queue for the latest kinect image, changes every save
         self.glasses_imu : dict = None      # current imu data
-        self.glasses_gaze : dict = None     # current gaze data
+        self.glasses_gaze : list = []     # gaze data queue, will keep updating after save
+        # keep enqueueing, dequeue to needed time with new kinect image
         self.glasses_image : float = None   # cv2 float
 
-        # IMPORTANT assume all timestamps given are in absolute time (meaning already added the offset)
-        self.gyro_state : np.array = glasses_gyro   # 3d vector of direction relative to glasses
-        self.gyro_timestamp : float = timestamp_offset
+        self.gaze_time_threshold : float = 1    # seconds, earliest gaze delta time to compare against
+        self.gaze_time_epsilon : float = 0.1    # seconds, earliest gaze delta time to consider saving
+        self.gaze_distance_episilon: float = .5  # ?, largest distance to allow for eye movement or something
+        self.variance_epsilon: float = 0.5
+
+    # check if this sample can be trusted
+    def validate_sample(self) -> bool:
+        if self.kinect_image_name == None:
+            # no image to save
+            return False
+        if len(self.current_gaze) == 0:
+            # not enough gaze samples
+            return False
+        
+        return True # ignore for testing    
+        
+        latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
+
+        def normalize(v):
+            norm = np.linalg.norm(v)
+            if norm == 0:
+                return v    # problem!
+            return np.divide(v, norm)
+        direction_list = []
+        for sample in self.current_gaze:            
+            if not sample["data"]:
+                return False
+            direction_list.append(normalize(sample["data"]["gaze3d"]))    # what if 0
+
+        # verify most recent gaze data is not too far
+        if (abs((float(self.kinect_image_name) * (10**-6)) - latest_gaze["timestamp"]) > self.gaze_time_epsilon):
+            # most recent gaze data too far back in the timeline
+            return False
+        
+        # verify most recent gaze data is not too far from the mean
+        mean_gaze = np.mean(direction_list)
+        if (np.linalg.norm(mean_gaze - normalize(latest_gaze["data"]["gaze3d"])) > self.gaze_distance_episilon):
+            return False
+        
+        # verify not too much movement happened
+        if (np.var(direction_list) > self.variance_epsilon):
+            return False
+
+        return True
+
 
     def save_frame(self):
+        if not self.validate_sample():
+            return
+
         # TODO: dont let it override
         recording_path = REC_DIR_LOC + "/" + self.recording_name
         post_path = POST_DIR_LOC + "/" + self.recording_name
@@ -41,28 +91,28 @@ class FrameData:
                      post_path + "/" + self.kinect_image_name + "/" + self.kinect_image_name + "_depth.csv")
         
         imu_file = open(post_path + "/" + self.kinect_image_name + "/gaze_data.json ", 'w')
-        imu_file.write(str(self.glasses_gaze))
+        imu_file.write(str(self.current_gaze[len(self.current_gaze) - 1]))
         imu_file.close()
 
         print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
 
-    # need more incapsulation for adding imu and shit
+    # need more encapsulation for adding imu and shit
     def update_kinect_image(self, name : int):
         self.kinect_image_name = str(name)
         # timestamp is 10^(-6)
+        while (len(self.glasses_gaze) > 0) and (abs((float(self.kinect_image_name) * (10**-6)) - self.glasses_gaze[0]["timestamp"]) > self.gaze_time_threshold):
+            # gaze sample too far to be considered
+            self.glasses_gaze.pop(0) # remove item from the queue
+        self.current_gaze = copy.deepcopy(self.glasses_gaze) # copy current content to the current gaze
     
     def update_glasses_imu(self, data : dict):
         if "gyroscope" in data["data"]:
             # update gyro
-            deltaTime = data["timestamp"] - self.gyro_timestamp
-            print(data["data"]["gyroscope"])
-            temp = deltaTime * np.array(data["data"]["gyroscope"], float)
-            self.gyro_state += temp
-            self.gyro_timestamp = data["timestamp"]
-        self.glasses_imu = data
+            self.glasses_imu = data
     
     def update_glasses_gaze(self, data : dict):
-        self.glasses_gaze = data
+        # enqueue new gaze data
+        self.glasses_gaze.append(data)
     
     def update_glasses_image(self, image: float):
         self.glasses_image = image
@@ -70,11 +120,32 @@ class FrameData:
 def process_frames():
     current_dir = REC_DIR_LOC + '/' + rec_name
     
+    # get offset of glasses and kinect
+    with open(current_dir + '/Kinect/start_timestamp.txt', 'r') as f:
+        time_str = f.readline()
+        print(time_str)
+        kinect_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
+
+    with open(current_dir + '/Glasses3/start_timestamp.txt', 'r') as f:
+        time_str = f.readline()
+        print(time_str)
+        glasses_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
+
+    # deduct offset to glasses timestamp to synchronize
+    delta_start_time = glasses_start_time - kinect_start_time
+    glasses_offset = delta_start_time.seconds + ((10**(-6)) * delta_start_time.microseconds)
+    if delta_start_time.days < 0:
+         delta_start_time = kinect_start_time - glasses_start_time
+         glasses_offset = delta_start_time.seconds + ((10**(-6)) * delta_start_time.microseconds)
+         glasses_offset = -glasses_offset
+
+
     with gzip.open(current_dir + '/Glasses3/gazedata.gz', 'rb') as f:
         lines = f.readlines()
         glasses_gaze_data = []  # keys are timestamps!
         for line in lines:
             dict = json.loads(line[: -1])
+            dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_gaze_data.append((dict["timestamp"], dict))
         heapq.heapify(glasses_gaze_data)
         #print(glasses_gaze_data)
@@ -92,6 +163,8 @@ def process_frames():
             if "magnetometer" in dict["data"]:
                 is_magnetometer = True
                 # to separate equal timestamps
+            
+            dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_imu_data.append((dict["timestamp"], is_magnetometer, dict))
         heapq.heapify(glasses_imu_data)
         #print(glasses_imu_data)
@@ -99,6 +172,7 @@ def process_frames():
     # with open(current_dir + '/Glasses3/imudata.gz') as f:
     #     glasses_imu_data = json.load(f)
     
+    # NOTE: not sycnrhonized
     glasses_video = cv2.VideoCapture(current_dir + '/Glasses3/scenevideo.mp4')
     glasses_video_fps = glasses_video.get(cv2.CAP_PROP_FPS)
     glasses_video_frame_total = glasses_video.get(cv2.CAP_PROP_FRAME_COUNT)  # total frame count
@@ -136,7 +210,7 @@ def process_frames():
 
     MAX_INT = pow(2, 32)
     KINECT_MUL = pow(10, -6)
-    current_frame = FrameData(recording_name=rec_name ,timestamp_offset=glasses_imu_start, glasses_gyro=np.array([0, 0, 0], float))
+    current_frame = FrameData(recording_name=rec_name, glasses_gyro=np.array([0, 0, 0], float))
 
     # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
     # TODO: actually update the gyro stuff
