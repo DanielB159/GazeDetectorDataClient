@@ -344,12 +344,13 @@ class GlassesHub:
     def change_ip(self):
         ip_text = self.ip_input.text()
         ip_pattern = r"\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
-        if re.match(ip_pattern, ip_text):
+        if re.fullmatch(ip_pattern, ip_text):
             self.host_ip = ip_text
             self.ip_label.setText(f"Current IP: {self.host_ip}")
             self.ip_input.setText("")
         else:
             print("the text is not in IPV4 format!")
+            self.ip_input.setText("")
 
     async def storage_recordings(self):
         """Show all recordings on the glasses"""
