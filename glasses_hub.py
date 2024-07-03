@@ -1,6 +1,6 @@
 """Module with glasses hub class and methods"""
 
-from PyQt5.QtWidgets import QPushButton, QWidget, QLabel
+from PyQt5.QtWidgets import QPushButton, QWidget, QLabel, QLineEdit, QInputDialog
 from qasync import QEventLoop
 from imports import asyncio
 from imports import g3pylib
@@ -18,6 +18,7 @@ import logging
 from datetime import datetime
 
 from imports import rec_manager
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -65,7 +66,7 @@ class GlassesHub:
             if not record_manager:
                 raise Exception("no recording manager provided")  # unnecessary check
             self.close_function = close_function
-            self.host_ip = None
+            self.host_ip = None if "G3_HOSTNAME" not in os.environ else os.environ["G3_HOSTNAME"]
             self.glasses_widget: QWidget = glasses_hub_widget
             self._is_initialized: bool = True
             self.battery_level: float = 0
@@ -111,9 +112,7 @@ class GlassesHub:
         if not self.g3 == None:
             logging.info("Already Connected, reconnecting...")
         try:
-            hostmame = (
-                os.environ["G3_HOSTNAME"] if os.environ["G3_HOSTNAME"] else self.host_ip
-            )
+            hostmame = self.host_ip
             if not hostmame:
                 raise ValueError("host ip not defined")
             self.g3 = await g3pylib.connect_to_glasses.with_hostname(hostname=hostmame)
@@ -341,6 +340,17 @@ class GlassesHub:
         except Exception as e:
             logging.error(str(e))
 
+
+    def change_ip(self):
+        ip_text = self.ip_input.text()
+        ip_pattern = r"\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+        if re.match(ip_pattern, ip_text):
+            self.host_ip = ip_text
+            self.ip_label.setText(f"Current IP: {self.host_ip}")
+            self.ip_input.setText("")
+        else:
+            print("the text is not in IPV4 format!")
+
     async def storage_recordings(self):
         """Show all recordings on the glasses"""
         if self.g3 == None:
@@ -441,3 +451,19 @@ class GlassesHub:
         self.show_recordings_button.clicked.connect(
             lambda: asyncio.ensure_future(self.storage_recordings())
         )
+
+        # define label to show the current IP address
+        self.ip_label: QLabel = QLabel(self.glasses_widget)
+        self.ip_label.resize(1000, 20)
+        self.ip_label.move(350, 450)
+        ip_to_put = self.host_ip if self.host_ip is not None else "not found"
+        self.ip_label.setText("Current IP: " + ip_to_put)
+        
+        self.ip_input = QLineEdit(self.glasses_widget)
+        self.ip_input.move(50, 450)
+        self.ip_input.setPlaceholderText("Enter IP address")
+        
+        self.change_ip_button = QPushButton(self.glasses_widget)
+        self.change_ip_button.setText("Change IP")
+        self.change_ip_button.move(200, 450)
+        self.change_ip_button.clicked.connect(self.change_ip)
