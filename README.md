@@ -20,6 +20,8 @@ pip install ./g3pylib
 ```
 - the pyKinectAzure is contained within `.devcontainer/requirements.txt`
 
+##### **Note:** Be sure to check the Glasses3 developer guide at "https://go.tobii.com/tobii-pro-glasses-3-developer-guide".
+
 ### Usage
 This section is a step by step explanation of how to make use of this client to create a recording. Individual explanation of components will be detailed on later sections.
 
@@ -30,15 +32,15 @@ To record them simultaneously both hubs must be running, which will allow the ma
 #### Connect to glasses
 The client and the Glasses3 unit must be on the same network to communicate:
 1. Connect a computer to the Glasses3 unit via an ethernet cable. Or connect to the wifi signal that the glasses broadcast while not connected to any network.
-2. On your browser, connect to 'http://<g3-address>'. Where <g3-address> is by default the serial number of the glasses. ex. 'TG03B-080202048921'. Note that some browsers fail to find this DNS address, and instead you have to replace <g3-address> with the glasses's ip that is connected to your computer. We found that Firefox is consistently able to connect.
+2. On your browser, connect to 'http://\<g3-address\>'. Where \<g3-address\> is by default the serial number of the glasses. Ex. 'TG03B-080202048921'. Note that some browsers fail to find this DNS address, and instead you have to replace \<g3-address\> with the glasses's ip that is connected to your computer. We found that Firefox is consistently able to connect.
 3. Go to "Network".
-4. Create a new configuration, set ipv4 mode to dchp, SSID to your network name, if the network is passowrd protected then set Security to wpa-psk and put the password under Pre Shared Key.
+4. Create a new configuration, set ipv4 mode to dhcp, SSID to your network name, if the network is passowrd protected then set Security to wpa-psk and put the password under Pre Shared Key.
 5. Mark AutoConnect on and hit apply.
 6. The glasses should now automatically connect to the network, and the client will be able to communicate with them.
 
 #### Calibration
 Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
-With each new user, the glasses must be calibrated to them for best gaze detection accuracy. The user should hold up the calibration cards an arm's length away from their face, and stare directly at the center on the card. Then click the "Calibrate" button on the Glasses Hub.
+With each new wearer, the glasses must be calibrated to them for best gaze detection accuracy. The wearer should hold up the calibration cards an arm's length away from their face, and stare directly at the dot on center on the card. Then click the "Calibrate" button on the Glasses Hub.
 Should the calibration be successful, you are now ready to start the recording. *NOTE add calibration notification. *NOTE add verification instructions
 
 #### Recording procedure
