@@ -10,7 +10,7 @@ import copy
 
 REC_DIR_LOC = './recordings'    #linux?
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-06-26 14_48_49.855310'
+rec_name = '2024-07-10 15_18_13.009295'
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
