@@ -4,8 +4,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QFileDialog,
     QPushButton,
-    QHBoxLayout,
-    QLabel,
+    QHeaderView
 )
 from qasync import QEventLoop
 from imports import asyncio
@@ -40,7 +39,7 @@ def thread_function(func):
     loop.close()
 
 
-def download_recording_thread(rec_name: str, http_url, directory):
+def download_recording_thread(rec_name: str, http_url, directory, glasses_offset = 3):
     # send a request to the glasses to download the recording
     r_recording = requests.get(
         http_url + f"/recordings/{rec_name}" + "/scenevideo.mp4", stream=True
@@ -99,7 +98,7 @@ def download_recording_thread(rec_name: str, http_url, directory):
         created = meta_data["created"]
         # convert the created string to a datetime object
         created = datetime.strptime(created, "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(
-            hours=3
+            hours=glasses_offset
         )
 
         # created += datetime(hour=2) # offset timestamp
@@ -111,8 +110,6 @@ def download_recording_thread(rec_name: str, http_url, directory):
         print("Meta data not downloaded.")
 
     print("All files downloaded.")
-
-
 
 
 class RecordingsHub:
@@ -131,6 +128,7 @@ class RecordingsHub:
         recordings_hub_widget: QWidget,
         recordings: dict[str, Recording],
         glasses: Glasses3,
+        glasses_offset=3,
     ):
         if not self._is_initialized:
             self._is_initialized: bool = True
@@ -143,7 +141,6 @@ class RecordingsHub:
 
     async def define_ui(self):
         """Function defining the UI of the Recordings Hub"""
-        print("Recordings Hub initialized.")
         # add labels of all of the recordings
         self.recording_table.setWindowTitle("Recordings")
         self.recording_table.setRowCount(len(self.recordings))
@@ -151,6 +148,9 @@ class RecordingsHub:
         self.recording_table.setHorizontalHeaderLabels(
             ["Name", "Date", "Duration", "download", "Delete"]
         )
+        self.recording_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.recording_table.setAlternatingRowColors(True)
+        self.recording_table.setStyleSheet("alternate-background-color: lightblue; background-color: white;")
         self.recording_table.move(0, 0)
         self.recording_table.resize(1170, 500)
         self.recording_table.closeEvent = self.closeEvent
@@ -178,27 +178,38 @@ class RecordingsHub:
             download_btn.clicked.connect(
                 lambda _, rec_name=rec_name: self.download_recording(rec_name)
             )
+            download_btn.setStyleSheet("background-color: lightgreen;")
             self.recording_table.setCellWidget(iteration, 3, download_btn)
             delete_btn = QPushButton("Delete")
             # download_btn.clicked.connect(lambda _, rec_name=rec_name: self.download_recording(rec_name))
             delete_btn.clicked.connect(
                 lambda _, rec_name=rec_name: self.delete_recording(rec_name)
             )
+            delete_btn.clicked.connect(lambda _, rec_name=rec_name: self.delete_recording(rec_name))
+
             self.recording_table.setCellWidget(iteration, 4, delete_btn)
 
             iteration += 1
+        self.recording_table.resizeColumnsToContents()
+        self.recording_table.resizeRowsToContents()
         self.recording_table.show()
 
     def delete_recording_thread(self, rec_name: str, g3: Glasses3, loop):
         # send a request to the glasses to delete the recording
-        req_post = g3._connection.generate_post_request("//recordings!delete", [rec_name])
-        future = asyncio.run_coroutine_threadsafe(g3._connection.require(req_post), loop)
+        req_post = g3._connection.generate_post_request(
+            "//recordings!delete", [rec_name]
+        )
+        future = asyncio.run_coroutine_threadsafe(
+            g3._connection.require(req_post), loop
+        )
         future.result()
-        
+
         # get the updated list of recordings from the glasses
-        future_recordings = asyncio.run_coroutine_threadsafe(self.g3.recordings._get_children(), loop)
+        future_recordings = asyncio.run_coroutine_threadsafe(
+            self.g3.recordings._get_children(), loop
+        )
         self.recordings = future_recordings.result()
-        
+
         # update the UI to reflect the changes in the recordings list
         future_ui = asyncio.run_coroutine_threadsafe(self.define_ui(), loop)
         future_ui.result()

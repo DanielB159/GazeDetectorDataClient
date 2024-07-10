@@ -4,10 +4,10 @@ from kinect_hub import KinectHub
 import sys
 import asyncio
 from datetime import datetime
-import gc
-
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
 # from imports import tk
-from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QLabel
+from PyQt5.QtWidgets import QApplication, QPushButton, QWidget, QLabel, QVBoxLayout, QSizePolicy
 
 from qasync import QEventLoop
 
@@ -77,40 +77,97 @@ def define_main_ui(main_widget: QWidget) -> None:
     """Function defining all of the UI elements of the main hub"""
 
     main_widget.setWindowTitle("Main Hub")
-    main_widget.setGeometry(500, 500, 500, 500)
+    main_widget.setGeometry(500, 500, 400, 400)  # Smaller screen size
+
+    # Set background color
+    main_widget.setAutoFillBackground(True)
+    palette = main_widget.palette()
+    palette.setColor(QPalette.Window, QColor(240, 240, 240))
+    main_widget.setPalette(palette)
 
     # Create the title
-    title = QLabel(main_widget)
-    title.setText("Main Hub")
-    title.move(200, 0)
+    title = QLabel("Main Hub", main_widget)
+    title.setAlignment(Qt.AlignCenter)
+
+    # Create buttons
+    glasses_hub_btn = QPushButton("Glasses Hub", main_widget)
+    glasses_hub_btn.setStyleSheet("background-color: lightblue;")
+
+    kinect_hub_btn = QPushButton("Kinect Hub", main_widget)
+    kinect_hub_btn.setStyleSheet("background-color: lightgreen;")
+
+    start_recording_button = QPushButton("Start Recording", main_widget)
+    start_recording_button.setStyleSheet("background-color: orange; font-weight: bold;")
+
+    end_recording_button = QPushButton("End Recording", main_widget)
+    end_recording_button.setStyleSheet("background-color: red; font-weight: bold; color: white;")
+
+    cancel_recording_button = QPushButton("Cancel Recording", main_widget)
+    cancel_recording_button.setStyleSheet("background-color: lightcoral;")
+
+    # Connect buttons to functions
+    glasses_hub_btn.clicked.connect(lambda: start_glasses_hub(main_widget))
+    kinect_hub_btn.clicked.connect(lambda: start_kinect_hub(main_widget))
+    start_recording_button.clicked.connect(lambda: start_recording())
+    end_recording_button.clicked.connect(lambda: end_recording(end_kinect=True, end_glasses=True))
+    cancel_recording_button.clicked.connect(lambda: cancel_recording())
+
+    # Create layouts
+    vbox = QVBoxLayout()
+    vbox.addWidget(title)
+    vbox.addWidget(glasses_hub_btn)
+    vbox.addWidget(kinect_hub_btn)
+    vbox.addWidget(start_recording_button)
+    vbox.addWidget(end_recording_button)
+    vbox.addWidget(cancel_recording_button)
+
+    # Set layout to main_widget
+    main_widget.setLayout(vbox)
+
+    # Make widgets stretch properly when resizing
+    title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    glasses_hub_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    kinect_hub_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    start_recording_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    end_recording_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    cancel_recording_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+
+    # main_widget.setWindowTitle("Main Hub")
+    # main_widget.setGeometry(500, 500, 500, 500)
+
+    # # Create the title
+    # title = QLabel(main_widget)
+    # title.setText("Main Hub")
+    # title.move(200, 0)
 
     
-    # Create the button for the glasses hub
-    glasses_hub_btn = QPushButton(main_widget)
-    glasses_hub_btn.setText("Glasses Hub")
-    glasses_hub_btn.move(200, 100)
-    glasses_hub_btn.clicked.connect(lambda: start_glasses_hub(main_widget))
+    # # Create the button for the glasses hub
+    # glasses_hub_btn = QPushButton(main_widget)
+    # glasses_hub_btn.setText("Glasses Hub")
+    # glasses_hub_btn.move(200, 100)
+    # glasses_hub_btn.clicked.connect(lambda: start_glasses_hub(main_widget))
 
-    # Create the button for the kinect hub
-    kinect_hub_btn = QPushButton(main_widget)
-    kinect_hub_btn.setText("Kinect Hub")
-    kinect_hub_btn.move(200, 150)
-    kinect_hub_btn.clicked.connect(lambda: start_kinect_hub(main_widget))
+    # # Create the button for the kinect hub
+    # kinect_hub_btn = QPushButton(main_widget)
+    # kinect_hub_btn.setText("Kinect Hub")
+    # kinect_hub_btn.move(200, 150)
+    # kinect_hub_btn.clicked.connect(lambda: start_kinect_hub(main_widget))
 
-    start_recording_button = QPushButton(main_widget)
-    start_recording_button.setText("Start Recording")
-    start_recording_button.move(200, 200)
-    start_recording_button.clicked.connect(lambda: start_recording())
+    # start_recording_button = QPushButton(main_widget)
+    # start_recording_button.setText("Start Recording")
+    # start_recording_button.move(200, 200)
+    # start_recording_button.clicked.connect(lambda: start_recording())
 
-    end_recording_button = QPushButton(main_widget)
-    end_recording_button.setText("End Recording")
-    end_recording_button.move(200, 250)
-    end_recording_button.clicked.connect(lambda: end_recording(end_kinect=True, end_glasses=True))
+    # end_recording_button = QPushButton(main_widget)
+    # end_recording_button.setText("End Recording")
+    # end_recording_button.move(200, 250)
+    # end_recording_button.clicked.connect(lambda: end_recording(end_kinect=True, end_glasses=True))
 
-    cancel_recording_button = QPushButton(main_widget)
-    cancel_recording_button.setText("Cancel Recording")
-    cancel_recording_button.move(200, 300)
-    cancel_recording_button.clicked.connect(lambda: cancel_recording())
+    # cancel_recording_button = QPushButton(main_widget)
+    # cancel_recording_button.setText("Cancel Recording")
+    # cancel_recording_button.move(200, 300)
+    # cancel_recording_button.clicked.connect(lambda: cancel_recording())
 
 
 
