@@ -36,17 +36,22 @@ The client and the Glasses3 unit must be on the same network to communicate:
 3. Go to "Network".
 4. Create a new configuration, set ipv4 mode to dhcp, SSID to your network name, if the network is passowrd protected then set Security to wpa-psk and put the password under Pre Shared Key.
 5. Mark AutoConnect on and hit apply.
-6. The glasses should now automatically connect to the network, and the client will be able to communicate with them.
+6. On the Glasses Hub window, input the in network ipv4 address of the glasses. Ex. '192.168.80.29'
+7. The glasses should now automatically connect to the network, and the client will be able to communicate with them.
 
 #### Calibration
-Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
-With each new wearer, the glasses must be calibrated to them for best gaze detection accuracy. The wearer should hold up the calibration cards an arm's length away from their face, and stare directly at the dot on center on the card. Then click the "Calibrate" button on the Glasses Hub.
+With each new wearer, the glasses must be calibrated to them for best gaze detection accuracy. 
+1. The wearer should hold up the calibration cards an arm's length away from their face, and stare directly at the dot on center on the card. 
+2. Open the Glasses Hub, connect to your Glasses3 unit with the "Connect" button.
+3. Click the "Calibrate" button, and wait for the calibration to succeed.
 Should the calibration be successful, you are now ready to start the recording. *NOTE add calibration notification. *NOTE add verification instructions
 
 #### Recording procedure
-Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
-When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
-To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
+1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
+2. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
+3. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
+4. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
+Note: To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
 *NOTE risks of running the recording too long.
 
 [Synchronization!!!]
@@ -86,9 +91,30 @@ recordings:
 #### Data and recordings
 explanation of the data recorded
 
-### Kinect Hub
+### Component explanation
+
+#### Main Hub
+The main hub is used to manage both the kinect and glasses hubs together:
+  - The "Glasses Hub" and "Kinect Hub" buttons open their corresponding hubs.
+  - The "Start Recording", "End Recording" and "Cancel Recording" buttons control recording with *both* devices at once.
+    Both hubs must be running and neither in the process of a recording to begin a recording from the main hub/
+
+#### Kinect Hub
 1. The kinect hub has the this functionality:
   - Get live view of the current camera feed with depth or without depth.
   - Record a video feed from the current camera with depth or without depth.
 2. The depth is measured in milimeters (one thousanth of a meter)
 3. The recordings, if dont without the glasses hub are saved in the following file structure:
+
+#### Glasses Hub
+The galsses hub is used to manage the glasses individually:
+  - "Connect" and "Disconnect" buttons connect you to the Glasses3 unit to be able to send request to it.
+  - "Start Live View" allows you to see in real time the video feed from the glasses forward facing camera. [Note] quit with q
+  - "Calibrate" button is used in the calibration procedure to calibrate the glasses to the wearer.
+  - "Start Recording", "Stop Recording" and "Cancel Recording" buttons control recording from the glasses individually.
+  - "SD Info" button requests how much battery and space on the SD card remains in the unit.
+  - "Storage Recordings" button lets you browse, download and delete past recordings from the glasses unit.
+  - "Change IP" is used to input the glasses ipv4 in your network.
+  - "Change Glasses Offset" is used to change the offset of time between the glasses and your machine.
+
+[hubs] are singletons
