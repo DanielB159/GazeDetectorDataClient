@@ -61,16 +61,26 @@ def start_recording() -> None:
     record_manager.glasses_is_recording = True
     record_manager.kinect_is_recording = True
     
-def end_recording(end_kinect: bool, end_glasses: bool) -> None:
+def end_recording() -> None:
     # no need to check, will stop and update if possible
-    if (end_kinect): kinect_hub.stop_recording() # make sure is self updating!
-    if (end_glasses): glasses_hub.stop_recording()
+    if glasses_hub is not None:
+        if record_manager.glasses_is_connected and record_manager.glasses_is_recording:
+            glasses_hub.stop_recording()
+    if kinect_hub is not None:
+        if record_manager.kinect_is_recording:
+            kinect_hub.stop_recording()
+    # if (end_kinect): kinect_hub.stop_recording() # make sure is self updating!
+    # if (end_glasses): glasses_hub.stop_recording()
     return
 
 def cancel_recording() -> None:
     # no need to check, will stop and update if possible
-    kinect_hub.stop_recording()    #no way to cancel for now
-    glasses_hub.cancel_recording()
+    if glasses_hub is not None:
+        if record_manager.glasses_is_connected and record_manager.glasses_is_recording:
+            glasses_hub.cancel_recording()
+    if kinect_hub is not None:
+        if record_manager.kinect_is_recording:
+            kinect_hub.stop_recording()
     return
 
 def define_main_ui(main_widget: QWidget) -> None:
@@ -109,7 +119,7 @@ def define_main_ui(main_widget: QWidget) -> None:
     glasses_hub_btn.clicked.connect(lambda: start_glasses_hub(main_widget))
     kinect_hub_btn.clicked.connect(lambda: start_kinect_hub(main_widget))
     start_recording_button.clicked.connect(lambda: start_recording())
-    end_recording_button.clicked.connect(lambda: end_recording(end_kinect=True, end_glasses=True))
+    end_recording_button.clicked.connect(lambda: end_recording())
     cancel_recording_button.clicked.connect(lambda: cancel_recording())
 
     # Create layouts
