@@ -44,7 +44,8 @@ With each new wearer, the glasses must be calibrated to them for best gaze detec
 1. The wearer should hold up the calibration cards an arm's length away from their face, and stare directly at the dot on center on the card. 
 2. Open the Glasses Hub, connect to your Glasses3 unit with the "Connect" button.
 3. Click the "Calibrate" button, and wait for the calibration to succeed.
-Should the calibration be successful, you are now ready to start the recording. *NOTE add calibration notification. *NOTE add verification instructions
+Should the calibration be successful, which is indicated by an output in the console, you are now ready to start the recording.
+Note: It is often useful to calibrate while watching the Live View, this is a good way to confirm the calibration is actually successful and the gaze direction is accurate.
 
 #### Recording procedure
 1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
@@ -54,7 +55,6 @@ Should the calibration be successful, you are now ready to start the recording. 
 Note: To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
 *NOTE risks of running the recording too long.
 
-[Synchronization!!!]
 ### NTP (Network Time Protocol)
 In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
 In order to record using this client and using the glasses, both the computer running the client and the glasses need to be connected to an NTP server. 
@@ -73,12 +73,13 @@ The computer which is running the client needs to also be connected to an NTP se
 recordings: 
     > recording_name (timestamp_of_recording):
         > Glasses3:
-            start_timestamp.txt
-            gazedata.gz
-            imudata.gz
-            eventdata.gz
-            scenevideo.mp4
+            start_timestamp.txt                    - exact time at which the glasses began recording, based on the glasses' clock
+            gazedata.gz                            - compressed JSON with data about the gaze directions
+            imudata.gz                             - compressed JSON with IMU data about the glasses
+            eventdata.gz                           - compressed JSON with data about events in the glasses, mostly unused
+            scenevideo.mp4                         - video recording from the glasses camera
         > Kinect:
+            start_timestamp.txt                    - exact time at which the kinect began recording, with some small machine-side delay, based on the computer's clock
             > timestamp_1
                 timestamp_1_depth_greyscale.png    - gryescale depth photo
                 timestamp_1_.csv                   - a .csv file with the depth in milimeters of each pixel
@@ -87,9 +88,6 @@ recordings:
             > timestamp_2
             ...
 ```
-
-#### Data and recordings
-explanation of the data recorded
 
 ### Component explanation
 
@@ -105,11 +103,12 @@ The main hub is used to manage both the kinect and glasses hubs together:
   - Record a video feed from the current camera with depth or without depth.
 2. The depth is measured in milimeters (one thousanth of a meter)
 3. The recordings, if dont without the glasses hub are saved in the following file structure:
+        ***ADD IT***
 
 #### Glasses Hub
 The galsses hub is used to manage the glasses individually:
   - "Connect" and "Disconnect" buttons connect you to the Glasses3 unit to be able to send request to it.
-  - "Start Live View" allows you to see in real time the video feed from the glasses forward facing camera. [Note] quit with q
+  - "Start Live View" allows you to see in real time the video feed from the glasses forward facing camera.
   - "Calibrate" button is used in the calibration procedure to calibrate the glasses to the wearer.
   - "Start Recording", "Stop Recording" and "Cancel Recording" buttons control recording from the glasses individually.
   - "SD Info" button requests how much battery and space on the SD card remains in the unit.
@@ -117,4 +116,7 @@ The galsses hub is used to manage the glasses individually:
   - "Change IP" is used to input the glasses ipv4 in your network.
   - "Change Glasses Offset" is used to change the offset of time between the glasses and your machine.
 
-[hubs] are singletons
+#### Implementation details
+Each hub is implemented as a singleton, that destroys itself when its associated window is closed.
+*Note add q???
+*To change default values, manually change the env file
