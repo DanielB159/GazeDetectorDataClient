@@ -1,5 +1,4 @@
-config 
-.env*
+config
 node_modules
 *.log
 .next

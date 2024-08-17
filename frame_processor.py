@@ -35,11 +35,9 @@ class FrameData:
     def validate_sample(self) -> bool:
         if self.kinect_image_name == None:
             # no image to save
-            print("no images to save")
             return False
         if len(self.current_gaze) == 0:
             # not enough gaze samples
-            print("not enogh gaze samples")
             return False
 
         latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
@@ -58,7 +56,6 @@ class FrameData:
         # verify most recent gaze data is not too far
         if (abs((float(self.kinect_image_name) * (10**-6)) - latest_gaze["timestamp"]) > self.gaze_time_epsilon):
             # most recent gaze data too far back in the timeline
-            print("too far back")
             return False
         
         # verify most recent gaze data is not too far from the mean
@@ -67,12 +64,10 @@ class FrameData:
             sum_gaze += gaze
         mean_gaze = np.divide(sum_gaze, len(direction_list))
         if (np.linalg.norm(mean_gaze - normalize(latest_gaze["data"]["gaze3d"])) > self.gaze_distance_episilon):
-            print("too far away")
             return False
         
         # verify not too much movement happened
         if (np.var(direction_list) > self.variance_epsilon):
-            print("too much variance")
             return False
 
         return True
