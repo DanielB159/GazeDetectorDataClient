@@ -297,7 +297,7 @@ class GlassesHub:
         try:
             async with self.g3.stream_rtsp(scene_camera=True, gaze=True) as streams:
                 async with streams.gaze.decode() as gaze_stream, streams.scene_camera.decode() as scene_stream:
-                    cv2.namedWindow("Live_View", cv2.WINDOW_NORMAL)
+                    cv2.namedWindow("Live_View (press q to exit)", cv2.WINDOW_NORMAL)
                     prev_key = -1
                     i = 0  # frames
                     while prev_key != ord("q"):
@@ -335,10 +335,10 @@ class GlassesHub:
                                 "No gaze data received. Have you tried putting on the glasses?"
                             )
 
-                        cv2.imshow("Live_View", frame)  # type: ignore
+                        cv2.imshow("Live_View (press q to exit)", frame)  # type: ignore
                         prev_key = cv2.waitKey(1)  # type: ignore
 
-                    cv2.destroyWindow("Live_View")
+                    cv2.destroyWindow("Live_View (press q to exit)")
         except Exception as e:
             logging.error(str(e))
 
