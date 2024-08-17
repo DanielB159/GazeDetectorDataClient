@@ -4,7 +4,7 @@ This client manages the simultaneous recording from a USB connected Azure Kinect
 It also contains a module for synchronizing those recordings and organizing them.
 
 #### Architecture
-This implementation uses python’s PyQT5 for the desktop UI, and relevant SDKs for handling the communication with the camera and the glasses.
+This implementation uses python’s PyQT5 for the desktop UI, Azure Kinect SDK for handling the communication with the kinect camera, and the g3pylib python library for the glasses.
 
 #### Libraries and dependencies
 The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
@@ -48,15 +48,16 @@ Should the calibration be successful, which is indicated by an output in the con
 Note: It is often useful to calibrate while watching the Live View, this is a good way to confirm the calibration is actually successful and the gaze direction is accurate.
 
 #### Recording procedure
-1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
-2. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
-3. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
-4. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
+1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub. You may need to update the "G3_HOSTNAME" variable in the environemnt variables file to the glasses' ipv4 in your network. Or update it within the glasses hub.
+2. The glasses NTP server and your own computer's NTP server may be in different time zones. Make sure to modify the "GLASSES_OFFSET" variable in the environment variables file, so that the program can synchronize both recordings. Or update it within the glasses hub.
+3. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
+4. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
+5. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
 Note: To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
-*NOTE risks of running the recording too long.
+Note: 
 
 ### NTP (Network Time Protocol)
-In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
+In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to an **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
 In order to record using this client and using the glasses, both the computer running the client and the glasses need to be connected to an NTP server. 
 
 #### Connecting the computer to an NTP server
@@ -102,8 +103,6 @@ The main hub is used to manage both the kinect and glasses hubs together:
   - Get live view of the current camera feed with depth or without depth.
   - Record a video feed from the current camera with depth or without depth.
 2. The depth is measured in milimeters (one thousanth of a meter)
-3. The recordings, if dont without the glasses hub are saved in the following file structure:
-        ***ADD IT***
 
 #### Glasses Hub
 The galsses hub is used to manage the glasses individually:
@@ -116,7 +115,28 @@ The galsses hub is used to manage the glasses individually:
   - "Change IP" is used to input the glasses ipv4 in your network.
   - "Change Glasses Offset" is used to change the offset of time between the glasses and your machine.
 
-#### Implementation details
-Each hub is implemented as a singleton, that destroys itself when its associated window is closed.
-*Note add q???
-*To change default values, manually change the env file
+* Recording may be done in each hub independently, in which case will be saved in its own folder.
+
+### Frame Processor
+The frame processor is an additional program that pre-processes the images and gaze data before transforming it to fit the camera's axes.
+It synchronizes the recording and splits them into folders by timestamp, with the appropriate kinect image, depth information, and gaze information for that timestamp.
+To run, place the recording folder into the "recordings" folder, and run the command line prompt of:
+> python frame_processor.py "recording_folder_name"     (without a folder location ./recordings)
+At which point the procedure will run, and save the result into the "processed_recordings" folder.
+Each processed recording will have the file structure of:
+```
+recordings: 
+    > recording_name (timestamp_of_recording):
+        > timestamp1:
+            timestamp1.png                          - kinect image
+            timestamp1.csv                          - csv of depth information
+            gaze_data.gz                           - compressed JSON with data about the gaze direction of this timestamp
+        > timestamp2:
+            timestamp2.png                          - kinect image
+            timestamp2.csv                          - csv of depth information
+            gaze_data.gz                           - compressed JSON with data about the gaze direction of this timestamp
+        ...
+```
+
+### Implementation details
+the implementation details are explicitly described in the project report file.

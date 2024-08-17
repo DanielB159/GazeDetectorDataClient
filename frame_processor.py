@@ -7,10 +7,11 @@ import heapq
 import numpy as np
 from datetime import datetime, timedelta
 import copy
+import sys
 
 REC_DIR_LOC = './recordings'
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-07-10 15_18_13.009295'
+rec_name = ''
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
@@ -34,11 +35,13 @@ class FrameData:
     def validate_sample(self) -> bool:
         if self.kinect_image_name == None:
             # no image to save
+            print("no images to save")
             return False
         if len(self.current_gaze) == 0:
             # not enough gaze samples
+            print("not enogh gaze samples")
             return False
-        
+
         latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
 
         def normalize(v):
@@ -55,15 +58,21 @@ class FrameData:
         # verify most recent gaze data is not too far
         if (abs((float(self.kinect_image_name) * (10**-6)) - latest_gaze["timestamp"]) > self.gaze_time_epsilon):
             # most recent gaze data too far back in the timeline
+            print("too far back")
             return False
         
         # verify most recent gaze data is not too far from the mean
-        mean_gaze = np.mean(direction_list)
+        sum_gaze = np.zeros(3)
+        for gaze in direction_list:
+            sum_gaze += gaze
+        mean_gaze = np.divide(sum_gaze, len(direction_list))
         if (np.linalg.norm(mean_gaze - normalize(latest_gaze["data"]["gaze3d"])) > self.gaze_distance_episilon):
+            print("too far away")
             return False
         
         # verify not too much movement happened
         if (np.var(direction_list) > self.variance_epsilon):
+            print("too much variance")
             return False
 
         return True
@@ -93,8 +102,6 @@ class FrameData:
         imu_file.write(str(self.current_gaze[len(self.current_gaze) - 1]))
         imu_file.close()
 
-        print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
-
     def update_kinect_image(self, name : int):
         self.kinect_image_name = str(name)
         # timestamp is 10^(-6)
@@ -116,17 +123,18 @@ class FrameData:
         self.glasses_image = image
 
 def process_frames():
+    # arg1 = "recording folder name"
+    rec_name = sys.argv[1]
+
     current_dir = REC_DIR_LOC + '/' + rec_name
     
     # get offset of glasses and kinect
     with open(current_dir + '/Kinect/start_timestamp.txt', 'r') as f:
         time_str = f.readline()
-        print(time_str)
         kinect_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
 
     with open(current_dir + '/Glasses3/start_timestamp.txt', 'r') as f:
         time_str = f.readline()
-        print(time_str)
         glasses_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
 
     # deduct offset to glasses timestamp to synchronize
@@ -206,7 +214,6 @@ def process_frames():
                             min_glasses_imu_timestamp,
                             min_gaze_timestamp,
                             min_kinect_timestamp)
-        print(min_timestamp)
 
         # prio updating before saving a new kinect image
         if (min_timestamp == min_glasses_video_timestamp):
@@ -258,5 +265,8 @@ def process_frames():
                 min_kinect_timestamp = MAX_INT
         else:
             print ("Error: timestamp does not exist.")
+
+    # upon sucessful completion
+    print("Recording \"" + rec_name + "\" processing completed.")
 
 process_frames()
