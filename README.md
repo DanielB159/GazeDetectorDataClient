@@ -1,6 +1,6 @@
 # GazeDetectorDataClient
 #### Short description
-This client manages the simultaneous recording from a USB connected Azure Kinect DK, and a Tobii Glasses3 unit over Wi-Fi.
+This client manages the simultaneous recording from a USB connected Azure Kinect, and a Tobii Glasses3 unit over Wi-Fi.
 It also contains a module for synchronizing those recordings and organizing them.
 
 #### Architecture
