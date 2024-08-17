@@ -1,9 +1,10 @@
 # GazeDetectorDataClient
 #### Short description
-This client will be used for data collection of gaze data from G3 glasses - and synchronization of them with a kinect camera.
+This client manages the simultaneous recording from a USB connected Azure Kinect DK, and a Tobii Glasses3 unit over Wi-Fi.
+It also contains a module for synchronizing those recordings and organizing them.
 
 #### Architecture
-We will use python's PyQT5 to build the desktop app, and relevant SDK's for handeling the communication with the camera and the glasses.
+This implementation uses python’s PyQT5 for the desktop UI, and relevant SDKs for handling the communication with the camera and the glasses.
 
 #### Libraries and dependencies
 The used python libraries are listed in .devcontainer/requirements.txt file. To install them run the following command in the terminal command:
@@ -19,6 +20,40 @@ pip install ./g3pylib
 ```
 - the pyKinectAzure is contained within `.devcontainer/requirements.txt`
 
+##### **Note:** Be sure to check the Glasses3 developer guide at "https://go.tobii.com/tobii-pro-glasses-3-developer-guide".
+
+### Usage
+This section is a step by step explanation of how to make use of this client to create a recording. Individual explanation of components will be detailed on later sections.
+
+#### Client hubs
+Both the glasses and the kinect individually communicate with their respective hubs, where you can interact with them individually.
+To record them simultaneously both hubs must be running, which will allow the main hub to run the recordings both at once.
+
+#### Connect to glasses
+The client and the Glasses3 unit must be on the same network to communicate:
+1. Connect a computer to the Glasses3 unit via an ethernet cable. Or connect to the wifi signal that the glasses broadcast while not connected to any network.
+2. On your browser, connect to 'http://\<g3-address\>'. Where \<g3-address\> is by default the serial number of the glasses. Ex. 'TG03B-080202048921'. Note that some browsers fail to find this DNS address, and instead you have to replace \<g3-address\> with the glasses's ip that is connected to your computer. We found that Firefox is consistently able to connect.
+3. Go to "Network".
+4. Create a new configuration, set ipv4 mode to dhcp, SSID to your network name, if the network is passowrd protected then set Security to wpa-psk and put the password under Pre Shared Key.
+5. Mark AutoConnect on and hit apply.
+6. On the Glasses Hub window, input the in network ipv4 address of the glasses. Ex. '192.168.80.29'
+7. The glasses should now automatically connect to the network, and the client will be able to communicate with them.
+
+#### Calibration
+With each new wearer, the glasses must be calibrated to them for best gaze detection accuracy. 
+1. The wearer should hold up the calibration cards an arm's length away from their face, and stare directly at the dot on center on the card. 
+2. Open the Glasses Hub, connect to your Glasses3 unit with the "Connect" button.
+3. Click the "Calibrate" button, and wait for the calibration to succeed.
+Should the calibration be successful, which is indicated by an output in the console, you are now ready to start the recording.
+Note: It is often useful to calibrate while watching the Live View, this is a good way to confirm the calibration is actually successful and the gaze direction is accurate.
+
+#### Recording procedure
+1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub.
+2. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
+3. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
+4. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
+Note: To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
+*NOTE risks of running the recording too long.
 
 ### NTP (Network Time Protocol)
 In order to synchronize the internal clocks of all devices that are being used to record, we need to verify that all of the devices are connected to the same **NTP server**. An NTP server is a server which can synchronize the internal clocks of the devices that are connected to it to a few milliseconds of Coordinated Universal Time (UTC).
@@ -36,43 +71,52 @@ The computer which is running the client needs to also be connected to an NTP se
 ### Recordings file structure
 ```
 recordings: 
-    > recording_name:
+    > recording_name (timestamp_of_recording):
         > Glasses3:
-            start_timestamp.txt
-            gazedata.gz
-            imudata.gz
-            scenevideo.mp4
+            start_timestamp.txt                    - exact time at which the glasses began recording, based on the glasses' clock
+            gazedata.gz                            - compressed JSON with data about the gaze directions
+            imudata.gz                             - compressed JSON with IMU data about the glasses
+            eventdata.gz                           - compressed JSON with data about events in the glasses, mostly unused
+            scenevideo.mp4                         - video recording from the glasses camera
         > Kinect:
-            start_timestamp.txt
-            [timestamp].png
+            start_timestamp.txt                    - exact time at which the kinect began recording, with some small machine-side delay, based on the computer's clock
+            > timestamp_1
+                timestamp_1_depth_greyscale.png    - gryescale depth photo
+                timestamp_1_.csv                   - a .csv file with the depth in milimeters of each pixel
+                timestamp_1_depth.png              - a RGB photo of the depth
+                timestamp_1.png                    - a colored photo
+            > timestamp_2
+            ...
 ```
 
-### Kinect Hub
+### Component explanation
+
+#### Main Hub
+The main hub is used to manage both the kinect and glasses hubs together:
+  - The "Glasses Hub" and "Kinect Hub" buttons open their corresponding hubs.
+  - The "Start Recording", "End Recording" and "Cancel Recording" buttons control recording with *both* devices at once.
+    Both hubs must be running and neither in the process of a recording to begin a recording from the main hub/
+
+#### Kinect Hub
 1. The kinect hub has the this functionality:
   - Get live view of the current camera feed with depth or without depth.
   - Record a video feed from the current camera with depth or without depth.
 2. The depth is measured in milimeters (one thousanth of a meter)
 3. The recordings, if dont without the glasses hub are saved in the following file structure:
-###### Recordings file structure
-```
-recordings: 
-    > recording_<timestamp_of_recording>:
-        > Kinect:
-            > timestamp_1
-                timestamp_1_depth_greyscale.png - gryescale depth photo
-                timestamp_1_.csv - a .csv file with the depth in milimeters of each pixel
-                timestamp_1_depth.png - a RGB photo of the depth
-                timestamp_1.png - a colored photo
-            > timestamp_2
-            ...
-```
- 
-#### Design
-##### The client will have one main hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/aa32c0b8-49d1-409b-8fc3-bce0a77a90a4)
+        ***ADD IT***
 
-##### The glasses hub button will open a glasses hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/fabc0a0e-e7f6-46cc-bb1f-4b217e4982e0)
+#### Glasses Hub
+The galsses hub is used to manage the glasses individually:
+  - "Connect" and "Disconnect" buttons connect you to the Glasses3 unit to be able to send request to it.
+  - "Start Live View" allows you to see in real time the video feed from the glasses forward facing camera.
+  - "Calibrate" button is used in the calibration procedure to calibrate the glasses to the wearer.
+  - "Start Recording", "Stop Recording" and "Cancel Recording" buttons control recording from the glasses individually.
+  - "SD Info" button requests how much battery and space on the SD card remains in the unit.
+  - "Storage Recordings" button lets you browse, download and delete past recordings from the glasses unit.
+  - "Change IP" is used to input the glasses ipv4 in your network.
+  - "Change Glasses Offset" is used to change the offset of time between the glasses and your machine.
 
-##### The kinect hub button will open a kinect hub screen:
-![image](https://github.com/DanielB159/GazeDetectorDataClient/assets/107650756/7a01b8c2-cb95-49e6-aefd-4e608a25fdba)
+#### Implementation details
+Each hub is implemented as a singleton, that destroys itself when its associated window is closed.
+*Note add q???
+*To change default values, manually change the env file
