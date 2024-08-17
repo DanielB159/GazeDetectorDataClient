@@ -8,12 +8,13 @@ import numpy as np
 from datetime import datetime, timedelta
 import copy
 
-REC_DIR_LOC = './recordings'    #linux?
+REC_DIR_LOC = './recordings'
 POST_DIR_LOC = './processed_recordings'
 rec_name = '2024-07-10 15_18_13.009295'
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
+    # NOTE: imu data updating is not properly implemented
     def __init__(self, recording_name: str, glasses_gyro : np.array):
         self.recording_name = recording_name
         
@@ -37,8 +38,6 @@ class FrameData:
         if len(self.current_gaze) == 0:
             # not enough gaze samples
             return False
-        
-        return True # ignore for testing    
         
         latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
 
@@ -96,7 +95,6 @@ class FrameData:
 
         print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
 
-    # need more encapsulation for adding imu and shit
     def update_kinect_image(self, name : int):
         self.kinect_image_name = str(name)
         # timestamp is 10^(-6)
