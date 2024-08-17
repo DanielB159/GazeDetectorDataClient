@@ -146,12 +146,7 @@ def process_frames():
             dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_gaze_data.append((dict["timestamp"], dict))
         heapq.heapify(glasses_gaze_data)
-        #print(glasses_gaze_data)
 
-    # with open(current_dir + '/Glasses3/gazedata.gz') as f:
-    #     glasses_gaze_data = json.load(f)
-    #     print(glasses_gaze_data)
-    
     with gzip.open(current_dir + '/Glasses3/imudata.gz', 'rb') as f:    # split to accel and magno
         lines = f.readlines()
         glasses_imu_data = []
@@ -165,12 +160,7 @@ def process_frames():
             dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_imu_data.append((dict["timestamp"], is_magnetometer, dict))
         heapq.heapify(glasses_imu_data)
-        #print(glasses_imu_data)
 
-    # with open(current_dir + '/Glasses3/imudata.gz') as f:
-    #     glasses_imu_data = json.load(f)
-    
-    # NOTE: not sycnrhonized
     glasses_video = cv2.VideoCapture(current_dir + '/Glasses3/scenevideo.mp4')
     glasses_video_fps = glasses_video.get(cv2.CAP_PROP_FPS)
     glasses_video_frame_total = glasses_video.get(cv2.CAP_PROP_FRAME_COUNT)  # total frame count
@@ -185,33 +175,13 @@ def process_frames():
                 print("Warning: " + s + " is not in the correct format for a Kinect recording file.")
     heapq.heapify(kinect_images_timestamps)
 
-    # now create a dictionary with time, type, and info
-    # perhaps for things like mp4 have the info just be frame number or next frame
 
-    # HOW TO READ FROM MP4
-    # while success: 
-  
-    #     # vidObj object calls read 
-    #     # function extract frames 
-    #     success, image = vidObj.read() 
-  
-    #     # Saves the frames with frame-count 
-    #     cv2.imwrite("frame%d.jpg" % count, image) 
-  
-    #     count += 1
-
-    # FROM THIS POINT ON, ASSUME SYNCHRONIZATION
-    glasses_imu_start = 0   # start time relative to outer video
-    glasses_gaze_start = 0
-    glasses_video_start = 0
-    kinect_video_start = 0  # will always be 0 since this is the relative point - 10^-6 of a second
-
+    #########
+    # start runnign through the data chronologically and save whenever a new kinect image was taken
     MAX_INT = pow(2, 32)
     KINECT_MUL = pow(10, -6)
     current_frame = FrameData(recording_name=rec_name, glasses_gyro=np.array([0, 0, 0], float))
 
-    # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
-    # TODO: actually update the gyro stuff
     # init minimal values
     vid_frame_exists, image = glasses_video.read()
     if (vid_frame_exists):
