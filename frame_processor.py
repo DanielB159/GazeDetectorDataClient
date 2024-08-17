@@ -7,13 +7,15 @@ import heapq
 import numpy as np
 from datetime import datetime, timedelta
 import copy
+import sys
 
-REC_DIR_LOC = './recordings'    #linux?
+REC_DIR_LOC = './recordings'
 POST_DIR_LOC = './processed_recordings'
-rec_name = '2024-07-10 15_18_13.009295'
+rec_name = ''
 
 class FrameData:
     # NOTE: all timestamps must already be synchronized to the kinect image at this point
+    # NOTE: imu data updating is not properly implemented
     def __init__(self, recording_name: str, glasses_gyro : np.array):
         self.recording_name = recording_name
         
@@ -37,9 +39,7 @@ class FrameData:
         if len(self.current_gaze) == 0:
             # not enough gaze samples
             return False
-        
-        return True # ignore for testing    
-        
+
         latest_gaze = self.current_gaze[len(self.current_gaze) - 1]
 
         def normalize(v):
@@ -59,7 +59,10 @@ class FrameData:
             return False
         
         # verify most recent gaze data is not too far from the mean
-        mean_gaze = np.mean(direction_list)
+        sum_gaze = np.zeros(3)
+        for gaze in direction_list:
+            sum_gaze += gaze
+        mean_gaze = np.divide(sum_gaze, len(direction_list))
         if (np.linalg.norm(mean_gaze - normalize(latest_gaze["data"]["gaze3d"])) > self.gaze_distance_episilon):
             return False
         
@@ -94,9 +97,6 @@ class FrameData:
         imu_file.write(str(self.current_gaze[len(self.current_gaze) - 1]))
         imu_file.close()
 
-        print(post_path + "/" + self.kinect_image_name + "/")   # save current frame to a new folder
-
-    # need more encapsulation for adding imu and shit
     def update_kinect_image(self, name : int):
         self.kinect_image_name = str(name)
         # timestamp is 10^(-6)
@@ -118,17 +118,18 @@ class FrameData:
         self.glasses_image = image
 
 def process_frames():
+    # arg1 = "recording folder name"
+    rec_name = sys.argv[1]
+
     current_dir = REC_DIR_LOC + '/' + rec_name
     
     # get offset of glasses and kinect
     with open(current_dir + '/Kinect/start_timestamp.txt', 'r') as f:
         time_str = f.readline()
-        print(time_str)
         kinect_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
 
     with open(current_dir + '/Glasses3/start_timestamp.txt', 'r') as f:
         time_str = f.readline()
-        print(time_str)
         glasses_start_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S.%f")
 
     # deduct offset to glasses timestamp to synchronize
@@ -148,12 +149,7 @@ def process_frames():
             dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_gaze_data.append((dict["timestamp"], dict))
         heapq.heapify(glasses_gaze_data)
-        #print(glasses_gaze_data)
 
-    # with open(current_dir + '/Glasses3/gazedata.gz') as f:
-    #     glasses_gaze_data = json.load(f)
-    #     print(glasses_gaze_data)
-    
     with gzip.open(current_dir + '/Glasses3/imudata.gz', 'rb') as f:    # split to accel and magno
         lines = f.readlines()
         glasses_imu_data = []
@@ -167,12 +163,7 @@ def process_frames():
             dict["timestamp"] -= glasses_offset # synchronize glasses with kinect
             glasses_imu_data.append((dict["timestamp"], is_magnetometer, dict))
         heapq.heapify(glasses_imu_data)
-        #print(glasses_imu_data)
 
-    # with open(current_dir + '/Glasses3/imudata.gz') as f:
-    #     glasses_imu_data = json.load(f)
-    
-    # NOTE: not sycnrhonized
     glasses_video = cv2.VideoCapture(current_dir + '/Glasses3/scenevideo.mp4')
     glasses_video_fps = glasses_video.get(cv2.CAP_PROP_FPS)
     glasses_video_frame_total = glasses_video.get(cv2.CAP_PROP_FRAME_COUNT)  # total frame count
@@ -187,33 +178,13 @@ def process_frames():
                 print("Warning: " + s + " is not in the correct format for a Kinect recording file.")
     heapq.heapify(kinect_images_timestamps)
 
-    # now create a dictionary with time, type, and info
-    # perhaps for things like mp4 have the info just be frame number or next frame
 
-    # HOW TO READ FROM MP4
-    # while success: 
-  
-    #     # vidObj object calls read 
-    #     # function extract frames 
-    #     success, image = vidObj.read() 
-  
-    #     # Saves the frames with frame-count 
-    #     cv2.imwrite("frame%d.jpg" % count, image) 
-  
-    #     count += 1
-
-    # FROM THIS POINT ON, ASSUME SYNCHRONIZATION
-    glasses_imu_start = 0   # start time relative to outer video
-    glasses_gaze_start = 0
-    glasses_video_start = 0
-    kinect_video_start = 0  # will always be 0 since this is the relative point - 10^-6 of a second
-
+    #########
+    # start runnign through the data chronologically and save whenever a new kinect image was taken
     MAX_INT = pow(2, 32)
     KINECT_MUL = pow(10, -6)
     current_frame = FrameData(recording_name=rec_name, glasses_gyro=np.array([0, 0, 0], float))
 
-    # TODO: make sure the timestamps actually mean the same thing and do the synchronization!
-    # TODO: actually update the gyro stuff
     # init minimal values
     vid_frame_exists, image = glasses_video.read()
     if (vid_frame_exists):
@@ -238,7 +209,6 @@ def process_frames():
                             min_glasses_imu_timestamp,
                             min_gaze_timestamp,
                             min_kinect_timestamp)
-        print(min_timestamp)
 
         # prio updating before saving a new kinect image
         if (min_timestamp == min_glasses_video_timestamp):
@@ -290,5 +260,8 @@ def process_frames():
                 min_kinect_timestamp = MAX_INT
         else:
             print ("Error: timestamp does not exist.")
+
+    # upon sucessful completion
+    print("Recording \"" + rec_name + "\" processing completed.")
 
 process_frames()
