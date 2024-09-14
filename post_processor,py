@@ -1,0 +1,95 @@
+import csv
+import numpy as np
+
+TAGS = ['tag0X', 'tag0Y', 'tag0Z', 'tag1X', 'tag1Y', 'tag1Z', 'tag2X', 'tag2Y', 'tag2Z', 'tag3X', 'tag3Y', 'tag3Z', 'tag4X', 'tag4Y', 'tag4Z',
+        'tag0Rx', 'tag0Ry', 'tag0Rz', 'tag1Rx', 'tag1Ry', 'tag1Rz', 'tag2Rx', 'tag2Ry', 'tag2Rz', 'tag3Rx', 'tag3Ry', 'tag3Rz', 'tag4Rx', 'tag4Ry', 'tag4Rz']
+TAG_0_ROTATION = 90     #around the Z axis, degrees, should be rad
+TAG_1_ROTATION = -90
+TAG_2_ROTATION = 0      # 4  2  3   tags top down
+TAG_3_ROTATION = 15     # 1     0
+TAG_4_ROTATION = -15    #approx.
+
+FOLDER_NAME = 'processed_recordings'
+# Replace 'your_file.csv' with the path to your CSV file
+file_name = 'combinedgazedata.csv'
+
+file_path = FOLDER_NAME + "/" + file_name
+
+# Initialize an empty list to hold the dictionaries
+array_of_dicts = []
+
+# Open the CSV file
+with open(file_path, mode='r', newline='', encoding='utf-8') as csvfile:
+    # Create a CSV reader object
+    reader = csv.DictReader(csvfile)
+    
+    # Iterate over each row in the reader
+    for row in reader:
+        # Strip whitespace from keys and values, and remove brackets from values
+        cleaned_row = {key.strip(): value.strip().replace('[', '').replace(']', '') if isinstance(value, str) else value for key, value in row.items()}
+
+        #ignore useless rows
+        hasinfo = False
+        for tag in TAGS:
+            try:
+                if int(float(cleaned_row[tag])) != 0:   #possible edge case rotation is small and close to 0,0
+                    hasinfo = True
+            except:
+                pass
+        
+        # Append each row (as a dictionary) to the list
+        if hasinfo:
+            # get only folder name and not path
+            cleaned_row['Folder'] = cleaned_row['Folder'].split('/')[4]
+            array_of_dicts.append(cleaned_row)
+
+# out of this data, construct a list of dictionaries with vectors
+vec_array = []
+for row in array_of_dicts:
+    vec_array.append({'Folder': row['Folder'], 'File': row['File'],
+                     'gaze2d': np.array([row['gaze2dX'], row['gaze2dY']], dtype = float),
+                     'gaze3d': np.array([row['gaze3dX'], row['gaze3dY'], row['gaze3dZ']], dtype = float),
+                     'tag0': np.array([row['tag0X'], row['tag0Y'], row['tag0Z']], dtype = float),
+                     'tag0R': np.array([row['tag0Rx'], row['tag0Ry'], row['tag0Rz']], dtype = float),
+                     'tag1': np.array([row['tag1X'], row['tag1Y'], row['tag1Z']], dtype = float),
+                     'tag1R': np.array([row['tag1Rx'], row['tag1Ry'], row['tag1Rz']], dtype = float),
+                     'tag2': np.array([row['tag2X'], row['tag2Y'], row['tag2Z']], dtype = float),
+                     'tag2R': np.array([row['tag2Rx'], row['tag2Ry'], row['tag2Rz']], dtype = float),
+                     'tag3': np.array([row['tag3X'], row['tag3Y'], row['tag3Z']], dtype = float),
+                     'tag3R': np.array([row['tag3Rx'], row['tag3Ry'], row['tag3Rz']], dtype = float),
+                     'tag4': np.array([row['tag4X'], row['tag4Y'], row['tag4Z']], dtype = float),
+                     'tag4R': np.array([row['tag4Rx'], row['tag4Ry'], row['tag4Rz']], dtype = float)
+                     })
+
+def rotate(gaze, rotation):
+    Rx = np.array([[1., 0., 0.], 
+                   [0., np.cos(np.deg2rad(rotation[0])), -np.sin(np.deg2rad(rotation[0]))], 
+                   [0., np.sin(np.deg2rad(rotation[0])), np.cos(np.deg2rad(rotation[0]))]
+                   ])
+    Ry = np.array([[np.cos(np.deg2rad(rotation[1])), 0., np.sin(np.deg2rad(rotation[1]))], 
+                   [0., 1., 0.],
+                   [-np.sin(np.deg2rad(rotation[1])), 0., np.cos(np.deg2rad(rotation[1]))]
+                   ])
+    Rz = np.array([[np.cos(np.deg2rad(rotation[2])), -np.sin(np.deg2rad(rotation[2])), 0.], 
+                   [np.sin(np.deg2rad(rotation[2])), np.cos(np.deg2rad(rotation[2])), 0.],
+                   [0., 0., 1.]
+                   ])
+    
+    return np.matmul(Rz, np.matmul(Ry, np.matmul(Rx, gaze))) # maybe another 180 degress around the z axis
+
+# transform gaze3d based on rotation
+for row in vec_array:
+    #TODO, account for location
+    if (row['tag2R'] != np.array([0., 0., 0.])).all():
+        row['gaze3dfin'] = rotate(row['gaze3d'], row['tag2R'])
+    elif (row['tag0R'] != np.array([0., 0., 0.])).all():
+        row['gaze3dfin'] = rotate(row['gaze3d'], row['tag0R'])
+    elif (row['tag1R'] != np.array([0., 0., 0.])).all():
+        row['gaze3dfin'] = rotate(row['gaze3d'], row['tag1R'])
+    elif (row['tag3R'] != np.array([0., 0., 0.])).all():
+        row['gaze3dfin'] = rotate(row['gaze3d'], row['tag3R'])
+    elif (row['tag4R'] != np.array([0., 0., 0.])).all():
+        row['gaze3dfin'] = rotate(row['gaze3d'], row['tag4R'])
+
+# Print the resulting array of dictionaries
+print(vec_array)
