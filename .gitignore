@@ -6,4 +6,5 @@ app
 dist
 __pycache__
 recordings/*
-processed_recordings*
+processed_recordings/*
+final_data/*

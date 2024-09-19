@@ -1,5 +1,7 @@
 import csv
 import numpy as np
+import os
+import shutil
 
 TAGS = ['tag0X', 'tag0Y', 'tag0Z', 'tag1X', 'tag1Y', 'tag1Z', 'tag2X', 'tag2Y', 'tag2Z', 'tag3X', 'tag3Y', 'tag3Z', 'tag4X', 'tag4Y', 'tag4Z',
         'tag0Rx', 'tag0Ry', 'tag0Rz', 'tag1Rx', 'tag1Ry', 'tag1Rz', 'tag2Rx', 'tag2Ry', 'tag2Rz', 'tag3Rx', 'tag3Ry', 'tag3Rz', 'tag4Rx', 'tag4Ry', 'tag4Rz']
@@ -77,19 +79,59 @@ def rotate(gaze, rotation):
     
     return np.matmul(Rz, np.matmul(Ry, np.matmul(Rx, gaze))) # maybe another 180 degress around the z axis
 
-# transform gaze3d based on rotation
 for row in vec_array:
-    #TODO, account for location
+    #TODO, account for location, check if actually updated
     if (row['tag2R'] != np.array([0., 0., 0.])).all():
         row['gaze3dfin'] = rotate(row['gaze3d'], row['tag2R'])
+        # fix rotation based on tag
+        row['gaze3dfin'] = rotate(row['gaze3d'], np.array([0, 0, TAG_2_ROTATION]))
     elif (row['tag0R'] != np.array([0., 0., 0.])).all():
         row['gaze3dfin'] = rotate(row['gaze3d'], row['tag0R'])
+        row['gaze3dfin'] = rotate(row['gaze3d'], np.array([0, 0, TAG_0_ROTATION]))
     elif (row['tag1R'] != np.array([0., 0., 0.])).all():
         row['gaze3dfin'] = rotate(row['gaze3d'], row['tag1R'])
+        row['gaze3dfin'] = rotate(row['gaze3d'], np.array([0, 0, TAG_1_ROTATION]))
     elif (row['tag3R'] != np.array([0., 0., 0.])).all():
         row['gaze3dfin'] = rotate(row['gaze3d'], row['tag3R'])
+        row['gaze3dfin'] = rotate(row['gaze3d'], np.array([0, 0, TAG_3_ROTATION]))
     elif (row['tag4R'] != np.array([0., 0., 0.])).all():
         row['gaze3dfin'] = rotate(row['gaze3d'], row['tag4R'])
+        row['gaze3dfin'] = rotate(row['gaze3d'], np.array([0, 0, TAG_4_ROTATION]))
+    else:
+        print("fail")
+        continue
+    #an additional 180 degrees rotation since that seems to be the real direction, around the "up" axis?
+    row['gaze3dfin'] = rotate(row['gaze3dfin'], np.array([0, 0, 180]))
 
-# Print the resulting array of dictionaries
-print(vec_array)
+# Define the paths
+processed_recordings_path = "./processed_recordings"
+final_data_path = "./final_data"
+
+# Create final_data directory if it doesn't exist
+os.makedirs(final_data_path, exist_ok=True)
+
+# Iterate through each dictionary in vec_array
+for record in vec_array:
+    folder_name = record["Folder"]
+    file_name = record["File"]
+
+    # Construct the source path to the image and destination path
+    source_image_path = os.path.join(processed_recordings_path, folder_name, file_name, file_name + ".png")
+    destination_folder_path = os.path.join(final_data_path, folder_name, file_name)
+
+    # Create the destination folder if it doesn't exist
+    os.makedirs(destination_folder_path, exist_ok=True)
+
+    # Copy the PNG file
+    if os.path.exists(source_image_path):
+        shutil.copy(source_image_path, destination_folder_path)
+        
+        # Create a .txt file with the rest of the dictionary data
+        txt_file_path = os.path.join(destination_folder_path, f"{file_name}.txt")
+        with open(txt_file_path, 'w') as txt_file:
+            for key, value in record.items():
+                txt_file.write(f"{key}: {value}\n")
+    else:
+        print(f"Warning: {source_image_path} does not exist.")
+
+print("Processing complete.")
