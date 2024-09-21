@@ -3,6 +3,7 @@ node_modules
 *.log
 .next
 app
+.env*
 dist
 __pycache__
 recordings/*
