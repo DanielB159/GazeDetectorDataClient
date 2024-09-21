@@ -126,6 +126,7 @@ recordings:
             gaze_data.gz
         ...
 ```
+**Note:** We added a powershell script `process_all_recordings` for running frame processor on all of the recording folders in the `/recordings` directory.
 
 ### Implementation details
 the implementation details are explicitly described in the project report file.
