@@ -18,7 +18,7 @@ git submodule init
 git submodule update
 pip install ./g3pylib
 ```
-- the pyKinectAzure is contained within `.devcontainer/requirements.txt`
+- the pyKinectAzure is contained within `.devcontainer/requirements.txt`, but can also be added as a sub-module in the same way. It contains helpful examples about the usage of the kinect camera.
 
 ##### **Note:** Be sure to install the Azure Kinect SDK 1.4.1.exe which contains the relevant firmware for the Azure Kinect. 
 ##### **Note:** Be sure to check the Glasses3 developer guide at "https://go.tobii.com/tobii-pro-glasses-3-developer-guide".
