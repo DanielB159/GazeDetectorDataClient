@@ -201,12 +201,16 @@ class GlassesHub:
                 logging.info(await self.previous_recording.get_http_path())
 
                 os.makedirs("./recordings/" + self.recording_folder_name + "/Glasses3")
-                download_recording_thread(
-                    self.previous_recording.uuid,
-                    self.g3._http_url,
-                    "./recordings/" + self.recording_folder_name + "/Glasses3",
-                    self.glasses_offset
+                download_thread = threading.Thread(
+                    target=download_recording_thread,
+                    args=(
+                        self.previous_recording.uuid,
+                        self.g3._http_url,
+                        "./recordings/" + self.recording_folder_name + "/Glasses3",
+                        self.glasses_offset
+                    )
                 )
+                download_thread.start()
 
         except Exception as e:
             logging.info(e)
