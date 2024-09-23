@@ -3,7 +3,11 @@ node_modules
 *.log
 .next
 app
+.env*
 dist
 __pycache__
 recordings/*
 processed_recordings*
+.pylintrc
+.vscode
+package

@@ -44,7 +44,7 @@ def download_recording_thread(rec_name: str, http_url, directory, glasses_offset
     r_recording = requests.get(
         http_url + f"/recordings/{rec_name}" + "/scenevideo.mp4", stream=True
     )
-    # r = requests.get('http://192.168.69.29/25a0ce56-c7b5-4551-b38e-79c8991b45bb/scenevideo.mp4', stream=True)
+    print("Starting download of recording and gaze data. Please wait until it finishes")
     if r_recording.status_code == 200:
         # save the recording to the directory
         path = os.path.join(directory, "scenevideo.mp4")
@@ -109,7 +109,7 @@ def download_recording_thread(rec_name: str, http_url, directory, glasses_offset
     else:
         print("Meta data not downloaded.")
 
-    print("All files downloaded.")
+    print("Finished with all download attempts.")
 
 
 class RecordingsHub:

@@ -18,7 +18,7 @@ git submodule init
 git submodule update
 pip install ./g3pylib
 ```
-- the pyKinectAzure is contained within `.devcontainer/requirements.txt`
+- the pyKinectAzure is contained within `.devcontainer/requirements.txt`, but can also be added as a sub-module in the same way. It contains helpful examples about the usage of the kinect camera.
 
 ##### **Note:** Be sure to install the Azure Kinect SDK 1.4.1.exe which contains the relevant firmware for the Azure Kinect. 
 ##### **Note:** Be sure to check the Glasses3 developer guide at "https://go.tobii.com/tobii-pro-glasses-3-developer-guide".
@@ -49,11 +49,12 @@ With each new wearer, the glasses must be calibrated to them for best gaze detec
 Note: It is often useful to calibrate while watching the Live View, this is a good way to confirm the calibration is actually successful and the gaze direction is accurate.
 
 #### Recording procedure
-1. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub. You may need to update the "G3_HOSTNAME" variable in the environemnt variables file to the glasses' ipv4 in your network. Or update it within the glasses hub.
-2. The glasses NTP server and your own computer's NTP server may be in different time zones. Make sure to modify the "GLASSES_OFFSET" variable in the environment variables file, so that the program can synchronize both recordings. Or update it within the glasses hub.
-3. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
-4. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
-5. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
+1. Notice that the recording uses an .env file for default configuration of the glasses hostname and of the glasses time offset. You can find an example .env file in the project directory.
+2. Before starting a new recording, make sure both hubs are running, and connect to the glasses in the Glasses Hub. You may need to update the "G3_HOSTNAME" variable in the environemnt variables file to the glasses' ipv4 in your network. Or update it within the glasses hub. 
+3. The glasses NTP server and your own computer's NTP server may be in different time zones. Make sure to modify the "GLASSES_OFFSET" variable in the environment variables file, so that the program can synchronize both recordings. Or update it within the glasses hub.
+4. Using the glasses API webpage at 'http://\<g3-address\>', under the API tab > network, you may request to see the glasses current time. Set the offset on the Glasses Hub to fix any time difference between your computer's time and the glasses'. This will usually be because the glasses are at a different timezone to yours.
+5. Click the "Start Recording" button on the Main Hub, this will start a recording on both the glasses and kinect.
+6. When the recording is complete, click the "End Recording" button on the Main Hub to stop the recording. This will then download and compile all files into the "recordings" folder.
 Note: To abort a recording without saving it to the glasses, hit "Cancel Recording" instead.
 Note: 
 
@@ -125,6 +126,7 @@ recordings:
             gaze_data.gz
         ...
 ```
+**Note:** We added a powershell script `process_all_recordings.ps1` for running frame processor on all of the recording folders in the `/recordings` directory. It should be ran from the main directory of the repo.
 
 ### Implementation details
 the implementation details are explicitly described in the project report file.

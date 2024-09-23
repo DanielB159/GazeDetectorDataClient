@@ -74,7 +74,7 @@ class GlassesHub:
             self.storage_free: int = 0
             self.storage_size: int = 1
             self.recording_folder_name: str = None
-            self.glasses_offset = 3
+            self.glasses_offset = 3 if "GLASSES_OFFSET" not in os.environ else os.environ["GLASSES_OFFSET"]
             self.define_ui()
             self.previous_recording = None  # TODO: ADD TYPING
             self.g3: Glasses3 = None
@@ -201,12 +201,16 @@ class GlassesHub:
                 logging.info(await self.previous_recording.get_http_path())
 
                 os.makedirs("./recordings/" + self.recording_folder_name + "/Glasses3")
-                download_recording_thread(
-                    self.previous_recording.uuid,
-                    self.g3._http_url,
-                    "./recordings/" + self.recording_folder_name + "/Glasses3",
-                    self.glasses_offset
+                download_thread = threading.Thread(
+                    target=download_recording_thread,
+                    args=(
+                        self.previous_recording.uuid,
+                        self.g3._http_url,
+                        "./recordings/" + self.recording_folder_name + "/Glasses3",
+                        self.glasses_offset
+                    )
                 )
+                download_thread.start()
 
         except Exception as e:
             logging.info(e)
@@ -514,124 +518,4 @@ class GlassesHub:
         self.battery_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.sd_card_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.offset_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.glasses_widget.setWindowTitle("Glasses Hub")
-        # self.glasses_widget.setGeometry(500, 500, 500, 600)
-        # self.glasses_widget.closeEvent = self.close_function
-
-        # self.connection_label: QLabel = QLabel(self.glasses_widget)
-        # self.connection_label.resize(1000, 20)
-        # self.connection_label.setText("Status: Not Connected")
-
-        # # connection buttons
-        # self.connect_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.connect_button.setText("Connect")
-        # self.connect_button.move(50, 50)
-        # self.connect_button.clicked.connect(
-        #     lambda: asyncio.ensure_future(self.connect())
-        # )
-
-        # self.disconnect_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.disconnect_button.setText("Disconnect")
-        # self.disconnect_button.move(150, 50)
-        # self.disconnect_button.clicked.connect(
-        #     lambda: asyncio.ensure_future(self.disconnect())
-        # )
-
-        # # calibration and live_view
-        # self.calibrate_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.calibrate_button.setText("Calibrate")
-        # self.calibrate_button.move(150, 100)
-        # self.calibrate_button.clicked.connect(
-        #     lambda: asyncio.ensure_future(self.calibrate())
-        # )
-
-        # self.lv_start_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.lv_start_button.setText("Start Live View")
-        # self.lv_start_button.move(50, 100)
-        # self.lv_start_button.clicked.connect(lambda: run_async_thread(self.lv_start))
-
-        # # recording buttons
-        # self.record_start_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.record_start_button.setText("Start Recording")
-        # self.record_start_button.move(50, 150)
-        # self.record_start_button.clicked.connect(
-        #     lambda: self.start_recording(
-        #         "solo_recording_" + "_".join(str(datetime.now()).split(":"))
-        #     )
-        # )
-
-        # self.record_stop_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.record_stop_button.setText("Stop Recording")
-        # self.record_stop_button.move(150, 150)
-        # self.record_stop_button.clicked.connect(lambda: self.stop_recording())
-
-        # self.record_cancel_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.record_cancel_button.setText("Cancel Recording")
-        # self.record_cancel_button.move(100, 200)
-        # self.record_cancel_button.clicked.connect(lambda: self.cancel_recording())
-
-        # # get SD card info an Battery info
-        # self.sd_info_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.sd_info_button.setText("SD Info")
-        # self.sd_info_button.move(50, 250)
-        # self.sd_info_button.clicked.connect(
-        #     lambda: asyncio.ensure_future(self.get_sd_and_battery_info())
-        # )
-
-        # # define label to show the baattery info
-        # self.battery_label: QLabel = QLabel(self.glasses_widget)
-        # self.battery_label.resize(1000, 20)
-        # self.battery_label.move(50, 300)
-        # self.battery_label.setText("Battery: " + str(self.battery_level) + "%")
-
-        # # define label to show the sd card info
-        # self.sd_card_label: QLabel = QLabel(self.glasses_widget)
-        # self.sd_card_label.resize(1000, 20)
-        # self.sd_card_label.move(50, 350)
-        # self.sd_card_label.setText(
-        #     "SD card free space left: "
-        #     + str(self.storage_free / self.storage_size)
-        #     + "%"
-        # )
-
-        # # define button to show all recordings
-        # self.show_recordings_button: QPushButton = QPushButton(self.glasses_widget)
-        # self.show_recordings_button.setText("Storage recordings")
-        # self.show_recordings_button.move(50, 400)
-        # self.show_recordings_button.clicked.connect(
-        #     lambda: asyncio.ensure_future(self.storage_recordings())
-        # )
-
-        # # define label to show the current IP address
-        # self.ip_label: QLabel = QLabel(self.glasses_widget)
-        # self.ip_label.resize(1000, 20)
-        # self.ip_label.move(350, 450)
-        # ip_to_put = self.host_ip if self.host_ip is not None else "not found"
-        # self.ip_label.setText("Current IP: " + ip_to_put)
-        
-        # self.ip_input = QLineEdit(self.glasses_widget)
-        # self.ip_input.move(50, 450)
-        # self.ip_input.setPlaceholderText("Enter IP address")
-        
-        # self.change_ip_button = QPushButton(self.glasses_widget)
-        # self.change_ip_button.setText("Change IP")
-        # self.change_ip_button.move(200, 448)
-        # self.change_ip_button.clicked.connect(self.change_ip)
-        
-        # # define label to show current glasses offset
-        # self.offset_label: QLabel = QLabel(self.glasses_widget)
-        # self.offset_label.resize(1000, 20)
-        # self.offset_label.move(350, 500)
-        # self.offset_label.setText("Current offset: " + str(self.glasses_offset))
-
-        # # define input line for glasses offset
-        # self.glasses_offset_input = QLineEdit(self.glasses_widget)
-        # self.glasses_offset_input.move(50, 500)
-        # self.glasses_offset_input.setPlaceholderText("Change glasses offset")
-        
-        # # define button to change glasses offset
-        # self.change_offset_button = QPushButton(self.glasses_widget)
-        # self.change_offset_button.setText("Change Glasses Offset")
-        # self.change_offset_button.move(200, 498)
-        # self.change_offset_button.clicked.connect(self.change_glasses_offset)
         
