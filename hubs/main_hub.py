@@ -1,6 +1,6 @@
 """Module with all functionality to run the main hub"""
-from glasses_hub import GlassesHub
-from kinect_hub import KinectHub
+from hubs.glasses_hub import GlassesHub
+from hubs.kinect_hub import KinectHub
 import sys
 import asyncio
 from datetime import datetime
