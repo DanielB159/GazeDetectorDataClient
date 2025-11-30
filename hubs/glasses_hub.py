@@ -9,8 +9,8 @@ from imports import g3pylib
 from g3pylib import Glasses3
 from imports import os
 from imports import cv2
-from recordings_hub import RecordingsHub
-from recordings_hub import download_recording_thread
+from hubs.recordings_hub import RecordingsHub
+from hubs.recordings_hub import download_recording_thread
 
 import threading
 import logging
